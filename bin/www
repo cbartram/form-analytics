@@ -14,7 +14,7 @@ const chalk = require('chalk');
  * Get port from environment and store in Express.
  */
 
-const port = normalizePort(process.env.PORT || '3010');
+const port = 3010;
 console.log(chalk.blue('\u2713 Setting Server Port to 3010...'));
 app.set('port', port);
 
@@ -24,7 +24,7 @@ app.set('port', port);
 console.log(chalk.blue('\u2713 Creating HTTP Server...'));
 const server = http.createServer(app);
 
-/**
+/** 
  * Listen on provided port, on all network interfaces.
  */
 
