@@ -69,7 +69,6 @@ import AnalyticsWidget from 'analytics-widget';
 
 //Next we want to register a new pick predictor
 new AnalyticsWidget.registerPickPredictor({
-    //Supply Basic Configuration see configuration section
     namespace: "Pizza.createForm",
 	elements: ["Veggies", "Meats", "Crust"],
 	method: "per-subject-frequency"
@@ -88,9 +87,95 @@ To register a namespace use the endpoint `/form/register` with a POST request bo
 	"method": "per-subject-frequency"
 }
 ```
+The API provides a fluid way to query, insert, and run analytical functions on data, however, it is the responsibility of the programmer
+to wire up the data coming from the forms and pass it into the API for insertion.
 
-After this is done you can easily insert documents into this namespace using the '/insert' endpoint! See the configuration section
-below to learn how to quickly insert elements
+In a React App state is a perfect way to take input from the forms and use the AnalyticsWidget API insert the data directly into the correct namespace
+check out the example below:
+
+```jsx
+            constructor() {
+                super();
+
+                this.state = {
+                    veggie: null
+                }
+            }
+
+            handleChange = (e) => this.setState({veggie: e.target.value)});
+            insertData = () => {
+                const {veggie} = this.state;
+
+                //Insert data
+                AnalyticsWidget.insert({
+                    namespace: ["Pizza.createForm"],
+                    elements: ["Veggies"],
+                    values: [veggie],
+                });
+            }
+
+            ...
+            render() {
+                return(
+                    <input type="text" onChange={this.handleChange} />
+                    <button type="submit" onClick={this.insertData} />
+                )
+            }
+```
+Notice how it is up to the **programmer to ensure input is updated to state when the `onChange` event occurs** and
+the `AnalyticsWidget` only serves to insert the form data into the proper namespace and table.
+
+Currently we know how to register new namespaces (when new forms are created), run analytics on form fields, and insert new form data
+into the correct namespace to allow for better predictions. But What about Querying specific data? What if our application has to use
+data for a specific user rather than the entire table or column? Nothing the fear the Query API is here!
+
+The Query API is a powerful part of the Analytics Widget and it allows you to quickly used chained method calls to reduce
+a data set based on specific constraints! Sounds fun right? Lets jump in!
+
+All Queries start with the `query()` method which tells the API that each method call henceforth is a constraint to the query.
+`query()` takes one parameter and thats the namespace you would like to query. The last query API call must be `exec()` which takes a callback
+function to retrieve the results of your query! That's it! The query API is beautiful because it can be as simple
+or complex as your needs!
+
+For instance:
+
+```javascript
+AnalyticsWidget.query("Pizza.createForm").exec(data => {
+    console.log(data);
+})
+```
+We notice in the query above we invoke the query API with `query()` and then instantly end it with `exec()` so this query says
+"Get me all documents in the 'Pizza.createForm' namespace whether they be Crust Styles, Meats, Veggies it doesn't matter I want to see everything"
+
+We can constrain the data set by chaining the `table()` method to the query like so:
+
+```javascript
+AnalyticsWidget.query("Pizza.createForm").table("Meats").exec(data => {
+    console.log(data);
+})
+```
+As you might have guessed this query pulls every 'Meat' document within the 'Pizza.createForm' namespace.
+We can add `and`, `like`, `where`, and `or` clauses as well to further constrain the data set!
+
+Previously we mentioned filtering data for only a specific user and we can use the `onlyUser($userID)` method to ensure
+that each document that comes back is a document submitted by your user, simply pass in your applications unique user ID and
+the API takes care of the rest!
+
+How about running analytics on a custom data set? No problem!
+
+```javascript
+AnalyticsWidget.query("Pizza.createForm").table("Meats").where("Turkey").and("Tomato").onlyUser("al9qI12W9").exec(data => {
+    //We can pass our data right into the analytics function!!
+    AnalyticsWidget.analyze({
+        data,
+        method: 'per-subject-frequency'
+    }, result => {
+        //result holds the most frequently added toppings given a unique data set!
+    });
+})
+```
+
+Check out our API endpoints below!
 
 ## API Endpoints
 
