@@ -15,7 +15,9 @@ class App extends Component {
             veggie: '',
             crust: '',
             prediction: [],
-            customPrediction: []
+            customPrediction: [],
+            error: '',
+            success: ''
         }
     }
 
@@ -31,15 +33,16 @@ class App extends Component {
         //Get the Analytics for desired forms when component Mounts
         AnalyticsWidget.registerPickPredictor({
             namespace: "Pizza.createForm",
-            elements: ["Meat", "Crust Style"],
+            elements: ["Meats", "Crust Style"],
             method: "per-subject-frequency"
         }, (body) => {
+            typeof body !== 'undefined' &&
             //Set state for our prediction results
             this.setState({prediction: body});
         });
 
         //Or Do a custom query for this specific user and get his/her results
-        AnalyticsWidget.query("Pizza.createForm").table("Crust Style").user(uuid).exec(res => {
+        AnalyticsWidget.query("Pizza.createForm").table("Crust Style").onlyUser(uuid).exec(res => {
            //The Query's Dataset 
            console.log(res);
 
@@ -57,7 +60,23 @@ class App extends Component {
      * Handles Submitting the Form
      */
     handleClick = () => {
+        const {meat, veggie, crust} = this.state;
 
+        if(meat === '' || veggie === '' || crust === '') {
+            this.setState({error: 'You need to select values first!', success: ''});
+        } else {
+
+            //Insert data
+            AnalyticsWidget.insert({
+                namespace: ["Pizza.createForm"],
+                elements: ["Meats", "Veggies", "Crust Style"],
+                values: [meat, veggie, crust],
+                user: uuid
+            });
+
+            //Re-run Analytics
+            this.setState({success: 'Successfully inserted data and re-ran analytics', error: ''})
+        }
     };
 
     render() {
@@ -65,6 +84,8 @@ class App extends Component {
             <div className="App">
                 <div className="row">
                     <div className="col-md-6 col-md-offset-3">
+                        <span className="label label-danger">{this.state.error}</span>
+                        <span className="label label-success">{this.state.success}</span>
                         <div className="form-group">
                             <label>Meats</label>
                             <select onChange={this.handleMeatChange} className="form-control" name="Meat">

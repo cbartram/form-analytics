@@ -10,7 +10,7 @@ var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var chalk = require('chalk');
 var _ = require('lodash');
-var Analytics = require('../src/AnalyticsWidget.js');
+var Analytics = require('./src/AnalyticsWidget.js');
 
 var app = express();
 

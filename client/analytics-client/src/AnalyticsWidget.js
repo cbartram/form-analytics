@@ -24,7 +24,7 @@ module.exports = {
             .send(config)
             .set('accept', 'json')
             .end((err, res) => {
-                typeof res.body !== 'undefined' ?
+                typeof res !== 'undefined' ?
                 callback(res.body) : callback(err);
             });
     },
@@ -117,7 +117,7 @@ module.exports = {
             .send(queryObj)
             .set('accept', 'json')
             .end((err, res) => {
-                typeof res.body !== 'undefined' ? callback(res.body) : callback(err);
+                typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
     },
 
@@ -127,7 +127,7 @@ module.exports = {
             .send(config)
             .set('accept', 'json')
             .end((err, res) => {
-                typeof res.body !== 'undefined' ? callback(res.body) : callback(err);
+                typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
     },
 
@@ -139,7 +139,7 @@ module.exports = {
         request
             .get(`${host}/all`)
             .end((err, res) => {
-                typeof res.body !== 'undefined' ? callback(res.body) : callback(err);
+                typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
         request.get(`${host}/all`).on('response', (err, res, body) => {
             callback(body);
@@ -156,6 +156,7 @@ module.exports = {
             .send(config)
             .set('accept', 'json')
             .end();
+        return this;
     },
 
     /**
