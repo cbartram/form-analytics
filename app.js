@@ -18,37 +18,47 @@ const Element = require('./models/Element');
 const User = require('./models/User');
 
 bluebird.promisifyAll(mongoose);
+mongoose.Promise = global.Promise;
 
-mongoose.connect('mongodb://localhost/test', (error) => {
-    if (error) {
-        console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
-    } else {
-        console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
-    }
-});
+//
+// mongoose.connect('mongodb://localhost/test', {
+//     keepAlive: true,
+//     reconnectTries: Number.MAX_VALUE,
+//     useMongoClient: true
+// }, (error) => {
+//     if (error) {
+//         console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
+//     } else {
+//         console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
+//     }
+// });
 
 //Connect to Database
-// mongoose.connect('mongodb://mongoAdmin:Innov8@34.226.210.46:27017/admin', (err) => {
-//   if (err) {
-//     chalk.hex('#e81a00')('\u2715 Failed to Connect to AWS instance, attemping to connect to local instance');
-//     mongoose.connect('mongodb://localhost/test', (error) => {
-//       if (error) {
-//         console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
-//       } else {
-//         console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
-//       }
-//     });
-//   } else {
-//       console.log(chalk.green('\u2713 Successfully connected to MongoDB in AWS'));
-//
-//   } 
-// });
+mongoose.connect('mongodb://mongoAdmin:Innov8@34.226.210.46:27017/admin', {
+    keepAlive: true,
+    reconnectTries: Number.MAX_VALUE,
+    useMongoClient: true
+}, (err) => {
+  if (err) {
+    chalk.hex('#e81a00')('\u2715 Failed to Connect to AWS instance, attemping to connect to local instance');
+    mongoose.connect('mongodb://localhost/test', (error) => {
+      if (error) {
+        console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
+      } else {
+        console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
+      }
+    });
+  } else {
+      console.log(chalk.green('\u2713 Successfully connected to MongoDB in AWS'));
+
+  }
+});
 
 // uncomment after placing your favicon in /public
 app.use(logger('dev'));
 app.use(bodyParser.json());
 
-app.use(bodyParser.urlencoded());
+app.use(bodyParser.urlencoded({extended: false}));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'jade');
