@@ -1,7 +1,7 @@
 /**
  * Created by christianbartram on 10/18/17.
  */
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
 
 let User = mongoose.Schema({

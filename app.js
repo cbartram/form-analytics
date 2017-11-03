@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const chalk = require('chalk');
 const _ = require('lodash');
-const Analytics = require('../src/AnalyticsWidget.js');
+const Analytics = require('./src/AnalyticsWidget.js');
 
 const app = express();
 
