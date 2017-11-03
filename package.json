@@ -1,0 +1,40 @@
+{
+  "name": "Form-Analytics",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "node run-babel.js",
+    "start": "nodemon ./build/bin/www"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "body-parser": "~1.18.2",
+    "chalk": "^2.2.0",
+    "chokidar": "^1.7.0",
+    "color": "^2.0.0",
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.9",
+    "decision-tree": "^0.3.1",
+    "ejs": "^2.5.7",
+    "express": "~4.15.5",
+    "jade": "^1.11.0",
+    "lodash": "^4.17.4",
+    "mongoose": "^4.10.8",
+    "morgan": "~1.9.0",
+    "nodemon": "^1.12.1",
+    "regenerator-runtime": "^0.11.0",
+    "serve-favicon": "~2.4.5",
+    "superagent": "^3.8.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.0.20",
+    "babel-plugin-transform-async-to-generator": "^6.24.1",
+    "babel-polyfill": "^6.0.16",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-es2015": "^6.0.15",
+    "babel-preset-es2017": "^6.24.1",
+    "babel-preset-latest": "^6.24.1",
+    "babel-preset-stage-0": "^6.0.15"
+  }
+}

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics Demo</title>
+</head>
+<body>
+<button onClick= >Run Query</button>
+<div id="output"></div>
+<script>
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+
+    var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+    function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+    var request = require('request');
+
+    var host = 'http://localhost:3010';
+    var queryObj = {};
+
+    var AnalyticsWidget = function () {
+        function AnalyticsWidget() {
+            _classCallCheck(this, AnalyticsWidget);
+        }
+
+        _createClass(AnalyticsWidget, [{
+            key: 'registerPickPredictor',
+
+
+            /**
+             * Registers a new pick predictions widget
+             * which will Query the database for the information specified
+             * @param config Object configuration object see docs for detailed specifications
+             * @param callback Function callback function
+             */
+            value: function registerPickPredictor(config, callback) {
+                request.post(this.host + '/form/register').form(config).on('response', function (err, res, body) {
+                    callback(body);
+                });
+            }
+        }, {
+            key: 'query',
+            value: function query(namespace) {
+                queryObj.namespace = namespace;
+                return this;
+            }
+        }, {
+            key: 'table',
+            value: function table(name) {
+                queryObj.table = name;
+                return this;
+            }
+        }, {
+            key: 'where',
+            value: function where(value) {
+                queryObj.query = {
+                    where: value
+                };
+
+                return this;
+            }
+        }, {
+            key: 'and',
+            value: function and(array) {
+                queryObj.query.and = array;
+                return this;
+            }
+        }, {
+            key: 'or',
+            value: function or(array) {
+                queryObj.query.or = array;
+                return this;
+            }
+        }, {
+            key: 'exec',
+            value: function exec(callback) {
+                request.post(this.host + '/query').form(queryObj).on('response', function (err, res, body) {
+                    callback(body);
+                });
+            }
+
+            /**
+             * Finds All Documents
+             * @param callback
+             */
+
+        }, {
+            key: 'all',
+            value: function all(callback) {
+                request.get(this.host + '/all').on('response', function (err, res, body) {
+                    callback(body);
+                });
+            }
+
+            /**
+             * Inserts data into the database under a specified namespace
+             * @param config Configuration Object see the docs for detailed specification
+             */
+
+        }, {
+            key: 'insert',
+            value: function insert(config) {
+                request.post(this.host + '/insert').form(config).on('response', function (err, res, body) {
+                    return body.success;
+                });
+            }
+
+            /**
+             * Sets the Host where the server is running
+             * @param host String hostname
+             */
+
+        }, {
+            key: 'setHost',
+            value: function setHost(host) {
+                this.host = host;
+            }
+
+            /**
+             * Returns the currently set Host
+             * http://localhost:3010 is the default value
+             * @returns {string}
+             */
+
+        }, {
+            key: 'getHost',
+            value: function getHost() {
+                return host;
+            }
+        }]);
+
+        return AnalyticsWidget;
+    }();
+
+    exports.default = AnalyticsWidget;
+
+    var widget = new AnalyticsWidget().query("Pizza.createForm").table("Crust Style").where("Thin").and(["Anchovies", "Onions"]).exec(function(data) {
+        console.log(data);
+        document.getElementById("output").appendChild(data);
+    })
+</script>
+</body>
+</html>
