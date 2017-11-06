@@ -335,7 +335,7 @@ start the server!
 * [React](https://facebook.github.io/react/) - The frontend web framework used
 * [NodeJS](https://nodejs.org/en/) - Server framework
 * [Express](https://expressjs.com/) - Dependency Management
-* [Mongo DB](https://www.mongodb.com/) - Used to persist data
+* [Mongo DB](https://index.js.mongodb.com/) - Used to persist data
 
 ## Contributing
 

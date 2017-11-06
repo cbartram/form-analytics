@@ -35,6 +35,9 @@ module.exports = {
             uniques.push(value);
         }
 
+        //Remove any blank values
+        uniques = uniques.filter(function(n){ return n != '' });
+
         // sort the uniques array in descending order by frequency
         function compareFrequency(a, b) {
             return frequency[b] - frequency[a];

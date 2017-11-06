@@ -2,11 +2,13 @@
   "name": "Form-Analytics",
   "version": "1.0.0",
   "private": true,
+  "proxy": "http://localhost:3010",
   "scripts": {
-    "compile": "node run-babel.js",
-    "start": "nodemon ./build/bin/www"
+    "build": "backpack build",
+    "start": "backpack"
   },
   "dependencies": {
+    "backpack-core": "^0.4.3",
     "bluebird": "^3.5.1",
     "body-parser": "~1.18.2",
     "chalk": "^2.2.0",
@@ -19,6 +21,7 @@
     "express": "~4.15.5",
     "jade": "^1.11.0",
     "lodash": "^4.17.4",
+    "material-ui": "^0.19.4",
     "mongoose": "^4.10.8",
     "morgan": "~1.9.0",
     "nodemon": "^1.12.1",

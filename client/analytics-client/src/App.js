@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
+import CircularProgress from 'material-ui/CircularProgress';
 import AnalyticsWidget from './AnalyticsWidget';
 
 //Users Unique ID for demo purposes
@@ -17,7 +18,8 @@ class App extends Component {
             prediction: [],
             customPrediction: [],
             error: '',
-            success: ''
+            success: '',
+            loading: true
         }
     }
 
@@ -33,24 +35,25 @@ class App extends Component {
         //Get the Analytics for desired forms when component Mounts
         AnalyticsWidget.registerPickPredictor({
             namespace: "Pizza.createForm",
-            elements: ["Meats", "Crust Style"],
+            elements: ["Meats", "Veggies", "Crust Style"],
             method: "per-subject-frequency"
         }, (body) => {
             typeof body !== 'undefined' &&
             //Set state for our prediction results
-            this.setState({prediction: body});
+            this.setState({prediction: body, loading: false});
+            console.log("ComponentDidMount Prediction", body)
         });
 
         //Or Do a custom query for this specific user and get his/her results
-        AnalyticsWidget.query("Pizza.createForm").table("Crust Style").onlyUser(uuid).exec(res => {
+        AnalyticsWidget.query("Pizza.createForm").table("Crust Style").exec(res => {
            //The Query's Dataset 
-           console.log(res);
+           console.log("Custom Query Response", res);
 
             AnalyticsWidget.analyze({
                 data: res,
                 method: 'per-subject-frequency'
             }, analysis => {
-                console.log(analysis);
+                console.log("Analysis of Custom Query", analysis);
             })
         });
     };
@@ -75,6 +78,18 @@ class App extends Component {
             });
 
             //Re-run Analytics
+            AnalyticsWidget.query('Pizza.createForm').onlyUser(uuid).exec(data => {
+               //We now have a defined data set to run the analytics on
+                AnalyticsWidget.analyze({
+                    data,
+                    method: 'per-subject-frequency'
+                }, prediction => {
+                    console.log(prediction);
+                  // this.setState({prediction});
+                });
+            });
+
+
             this.setState({success: 'Successfully inserted data and re-ran analytics', error: ''})
         }
     };
@@ -83,9 +98,14 @@ class App extends Component {
         return (
             <div className="App">
                 <div className="row">
-                    <div className="col-md-6 col-md-offset-3">
-                        <span className="label label-danger">{this.state.error}</span>
-                        <span className="label label-success">{this.state.success}</span>
+                    <div className="col-md-3 col-md-offset-5">
+                        <h2>Form Analytics Demo</h2>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-md-3 col-md-offset-5">
+                        <span className="label label-danger" style={{fontSize:15, marginBottom:15}}>{this.state.error}</span>
+                        <span className="label label-success" style={{fontSize:15, marginBottom:15}}>{this.state.success}</span>
                         <div className="form-group">
                             <label>Meats</label>
                             <select onChange={this.handleMeatChange} className="form-control" name="Meat">
@@ -116,17 +136,33 @@ class App extends Component {
                             </select>
                         </div>
                         <button type="submit" onClick={this.handleClick} className="btn btn-primary">Submit</button>
-                        <h4>Suggestions for you!</h4>
-                        <ul>
-                            {
-                                //Map over prediction results
-                                this.state.prediction.map(ele => {
-                                    return ele.map(i => {
-                                        return <li key={i + Math.random()}>{i}</li>
-                                    });
-                                })
-                            }
-                        </ul>
+
+                        {
+                         this.state.loading ? <div>
+                             <h4>Loading Suggestions!</h4>
+                             <CircularProgress size={80} thickness={5} />
+                         </div> :
+                             <div className="row">
+                                 <h4>Suggestions for you!</h4>
+                                 {
+                                     this.state.prediction.map((arr, key) => {
+                                         return (
+                                             <div className="col-md-4" key={key}>
+                                                 <ul className="list-group">
+                                                     {
+                                                         arr.map((prediction, key) => {
+                                                             return <li className="list-group-item" key={key}>{prediction}</li>
+                                                         })
+                                                     }
+                                                 </ul>
+                                             </div>
+                                         )
+                                     })
+                                 }
+                             </div>
+                        }
+
+
                     </div>
                 </div>
             </div>
