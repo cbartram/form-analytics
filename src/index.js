@@ -1,3 +1,5 @@
+const debug = require('debug')('form-analytics:server');
+const http = require('http');
 const express = require('express');
 const path = require('path');
 const logger = require('morgan');
@@ -8,50 +10,38 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const chalk = require('chalk');
 const _ = require('lodash');
-const Analytics = require('./src/AnalyticsWidget.js');
+const Analytics = require('./utils/AnalyticsWidget.js');
 
 const app = express();
 
 //Models
-const Form = require('./models/Form');
-const Element = require('./models/Element');
-const User = require('./models/User');
+const Form = require('../models/Form');
+const Element = require('../models/Element');
+const User = require('../models/User');
 
 bluebird.promisifyAll(mongoose);
 mongoose.Promise = global.Promise;
 
-//
-// mongoose.connect('mongodb://localhost/test', {
-//     keepAlive: true,
-//     reconnectTries: Number.MAX_VALUE,
-//     useMongoClient: true
-// }, (error) => {
-//     if (error) {
-//         console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
-//     } else {
-//         console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
-//     }
-// });
-
 //Connect to Database
 mongoose.connect('mongodb://mongoAdmin:Innov8@34.226.210.46:27017/admin', {
     keepAlive: true,
-    reconnectTries: Number.MAX_VALUE,
-    useMongoClient: true
+    reconnectTries: 5,
+    useMongoClient: true,
+    reconnectInterval: 500
 }, (err) => {
-  if (err) {
-    chalk.hex('#e81a00')('\u2715 Failed to Connect to AWS instance, attemping to connect to local instance');
-    mongoose.connect('mongodb://localhost/test', (error) => {
-      if (error) {
-        console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
-      } else {
-        console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
-      }
-    });
-  } else {
-      console.log(chalk.green('\u2713 Successfully connected to MongoDB in AWS'));
+    if (err) {
+        chalk.hex('#e81a00')('\u2715 Failed to Connect to AWS instance, attemping to connect to local instance');
+        mongoose.connect('mongodb://localhost/test', (error) => {
+            if (error) {
+                console.log(chalk.hex('#e81a00')('\u2715 Failed to Connect to the Database....Check Connection URI'))
+            } else {
+                console.log(chalk.green('\u2713 connected to MongoDB:LOCAL ENV'));
+            }
+        });
+    } else {
+        console.log(chalk.green('\u2713 Successfully connected to MongoDB in AWS'));
 
-  }
+    }
 });
 
 // uncomment after placing your favicon in /public
@@ -92,74 +82,74 @@ app.options("/*", function(req, res, next){
  * or Running Analytics on an existing namespace
  */
 app.post('/form/register', (req, res) => {
-   //Get the namespace & Required variables i.e. ApplicationName.formName
-   const namespace = req.body.namespace;
-   const elements = req.body.elements;
-   const method = req.body.method;
+    //Get the namespace & Required variables i.e. ApplicationName.formName
+    const namespace = req.body.namespace;
+    const elements = req.body.elements;
+    const method = req.body.method;
 
-   Form.find({namespace}, (err, record) => {
-           //There was no namespace this is a new form
-           if(record.length <= 0) {
-               //Create a new namespace
-               new Form({namespace, elements}).save((err, record) => {
-                   console.log(chalk.green(`\u2713 Successfully created new Namespace: ${namespace}`));
+    Form.find({namespace}, (err, record) => {
+        //There was no namespace this is a new form
+        if(record.length <= 0) {
+            //Create a new namespace
+            new Form({namespace, elements}).save((err, record) => {
+                console.log(chalk.green(`\u2713 Successfully created new Namespace: ${namespace}`));
 
-                   res.json({
-                       success:true,
-                       data: []
-                   })
-               });
+                res.json({
+                    success:true,
+                    data: []
+                })
+            });
 
-           } else {
+        } else {
 
-               //Find the different element & Join them into the Form Namespace
-               record[0].set({elements: _.union(elements.filter(e => !record[0].elements.includes(e)), record[0].elements)});
-               record[0].save();
+            //Find the different element & Join them into the Form Namespace
+            record[0].set({elements: _.union(elements.filter(e => !record[0].elements.includes(e)), record[0].elements)});
+            record[0].save();
 
 
-               console.log(chalk.green(`\u2713 Namespace: ${namespace} has been located running analytics...`));
+            console.log(chalk.green(`\u2713 Namespace: ${namespace} has been located running analytics...`));
 
-               let promises = [];
-               let responseData = [];
-               
-               elements.forEach(element => {
-                   console.log(chalk.green(`\u2713 Found Data for Element Namespace: ${element}`));
-                   //Find each element given its parent namespace
-                   let p = Element.find({namespace: `${namespace}.${element}`}).exec().then(val => {
-                       //Acts as a switch statement to effectively compute based on the specified method
-                       let analyticsMethod = {
-                           'per-subject-recent': () => {
-                               return  Analytics.perSubjectRecent(val);
-                           },
-                           'per-subject-frequency': () => {
-                               return Analytics.perSubjectFrequency(val);
-                           },
-                           'decision-tree': () => {
-                               return Analytics.decisionTree(val);
-                           },
-                           'bayesian': () => {
-                               return Analytics.bayesian(val);
-                           }
-                       };
-                       //Push the results of the analytics to an empty array
-                       responseData.push(analyticsMethod[method]());
-                   });
-                   promises.push(p);
-               });
-               Promise.all(promises).then(() => {
-                   res.json(responseData);
-               }).catch((err) => {
-                   console.error(err);
-               });
-           }
-   });
+            let promises = [];
+            let responseData = [];
+
+            elements.forEach(element => {
+                console.log(chalk.green(`\u2713 Found Data for Element Namespace: ${element}`));
+                //Find each element given its parent namespace
+                let p = Element.find({namespace: `${namespace}.${element}`}).exec().then(val => {
+                    //Acts as a switch statement to effectively compute based on the specified method
+                    let analyticsMethod = {
+                        'per-subject-recent': () => {
+                            return  Analytics.perSubjectRecent(val);
+                        },
+                        'per-subject-frequency': () => {
+                            return Analytics.perSubjectFrequency(val);
+                        },
+                        'decision-tree': () => {
+                            return Analytics.decisionTree(val);
+                        },
+                        'bayesian': () => {
+                            return Analytics.bayesian(val);
+                        }
+                    };
+                    //Push the results of the analytics to an empty array
+                    responseData.push(analyticsMethod[method]());
+                });
+                promises.push(p);
+            });
+            Promise.all(promises).then(() => {
+                res.json(responseData);
+            }).catch((err) => {
+                console.error(err);
+            });
+        }
+    });
 });
 
 /**
  * Handles a basic user signup
  */
 app.post('/signup', (req, res) => {
-   let {name, email, password, username }  = req.body;
+    let {name, email, password, username }  = req.body;
 
     let user = new User({name, email, password, username});
     user.save();
@@ -168,29 +158,30 @@ app.post('/signup', (req, res) => {
 });
 
 /**
- * Handles Calculating the Analytics
+ * Handles Calculating the Analytics on a custom dataset
  * @param dataset Array of MongoDB document objects
+
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-const runAnalytics = (dataset, method) =>{
-            //Acts as a switch statement to effectively compute based on the specified method
-            let analyticsMethod = {
-                'per-subject-recent': () => {
-                    return  Analytics.perSubjectRecent(dataset);
-                },
-                'per-subject-frequency': () => {
-                    return Analytics.perSubjectFrequency(dataset);
-                },
-                'decision-tree': () => {
-                    return Analytics.decisionTree(dataset);
-                },
-                'bayesian': () => {
-                    return Analytics.bayesian(dataset);
-                }
-            };
+const runAnalytics = (dataset, method) => {
 
-            //Push the results of the analytics to an empty array
-            return analyticsMethod[method]();
+    let analyticsMethod = {
+        'per-subject-recent': () => {
+            return  Analytics.perSubjectRecent(dataset);
+        },
+        'per-subject-frequency': () => {
+            return Analytics.perSubjectFrequency(dataset);
+        },
+        'decision-tree': () => {
+            return Analytics.decisionTree(dataset);
+        },
+        'bayesian': () => {
+            return Analytics.bayesian(dataset);
+        }
+    };
+
+    //Push the results of the analytics to an empty array
+    return analyticsMethod[method]();
 };
 
 /**
@@ -201,6 +192,7 @@ app.post('/analytics', (req, res) => {
     const method = req.body.method;
 
     res.json({data: runAnalytics(data, method)});
+
 });
 
 
@@ -217,7 +209,6 @@ app.post('/insert', (req, res) => {
     if(typeof user === 'undefined') {
         user = null
     }
-
 
     if(elementNamespaces.length !== elementValues.length) {
         console.log(chalk.hex('#e81a00')('\u2715 ElementOutOfBoundsException Error: More Elements than Values to fill.'));
@@ -290,18 +281,14 @@ app.get('/remove', (req, res) => {
     res.json({success: true});
 });
 
-app.use('/', require('./routes/index'));
-app.use('/user', require('./routes/user'));
-app.use('/pizza', require('./routes/pizza'));
-
 app.get('/all', (req, res) => {
-  Form.find({namespace: "Pizza.createForm"}, (err, data) => {
-      console.log(data);
-  });
+    Form.find({namespace: "Pizza.createForm"}, (err, data) => {
+        console.log(data);
+    });
 
-  Element.find({}, (err, d) => {
-      res.json(d);
-  });
+    Element.find({}, (err, d) => {
+        res.json(d);
+    });
 });
 
 app.post('/query', (req, res) => {
@@ -312,6 +299,7 @@ app.post('/query', (req, res) => {
         var hasWhere = req.body.query.hasOwnProperty('where');
         var hasUser = req.body.query.hasOwnProperty('user');
         var hasLike = req.body.query.hasOwnProperty('like');
+        var hasLimit = req.body.query.hasOwnProperty('limit');
     } catch (err) {
         //They are missing some properties of the query
         console.log('\u2715 Part of the Query is Undefined');
@@ -336,33 +324,104 @@ app.post('/query', (req, res) => {
     let query = {};
 
     //Match Req body to query values
-    !hasTable ? query.namespace = {$regex: req.body.namespace, $options: 'i'} : query.namespace = `${req.body.namespace}.${req.body.table}`;
+    !hasTable ? query.namespace = {
+        $regex: req.body.namespace,
+        $options: 'i'
+    } : query.namespace = `${req.body.namespace}.${req.body.table}`;
     hasWhere ? query.value = req.body.query.where : null;
     hasAnd ? query['references.value'] = {$all: req.body.query.and} : null;
     hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
     hasUser ? query.user = req.body.query.user : null;
-    hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*' , $options: 'i'} : null;
+    hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
 
-    Element.find(query, (err, docs) => res.json(docs));
+    hasLimit ?
+        Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
+        Element.find(query, (err, docs) => {
+            res.json(docs);
+        });
 
 });
 
+async function foo() {
+    await Element.find({});
+}
+
 app.get('*', (req, res) => {
-  res.json({success: true, msg: 'The server is active and running!'});
+    res.json({success: true, msg: 'The server is active and running!'});
 });
 
 // error handler
 app.use((err, req, res) => {
-  console.log(err);
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+    console.log(err);
+    // set locals, only providing error in development
+    res.locals.message = err.message;
+    res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-  // render the error page
-  res.status(err.status || 500);
+    // render the error page
+    res.status(err.status || 500);
 
-  res.json({error: err});
+    res.json({error: err});
 
 });
 
-module.exports = app;
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+const port = 3010;
+console.log(chalk.blue('\u2713 Setting Server Port to 3010...'));
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+console.log(chalk.blue('\u2713 Creating HTTP Server...'));
+const server = http.createServer(app);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port, (err) => {
+    if(err) onError(err);
+    onListening();
+});
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
+
+    let bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
+
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+function onListening() {
+    let addr = server.address();
+    console.log(chalk.blue('-------------------------------------------'));
+    console.log(chalk.blue(`| Analytics Server Listening on Port ${addr.port} |`));
+    console.log(chalk.blue('-------------------------------------------'));
+}

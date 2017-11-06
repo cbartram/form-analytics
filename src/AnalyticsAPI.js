@@ -1,5 +1,7 @@
 const request = require('superagent');
 
+//TODO uncomment before prod deployment
+//let host = 'http://34.237.224.226:3010';
 let host = 'http://localhost:3010';
 let queryObj = {};
 
@@ -24,7 +26,7 @@ module.exports = {
             .send(config)
             .set('accept', 'json')
             .end((err, res) => {
-                typeof res.body !== 'undefined' ?
+                typeof res !== 'undefined' ?
                     callback(res.body) : callback(err);
             });
     },
@@ -117,7 +119,8 @@ module.exports = {
             .send(queryObj)
             .set('accept', 'json')
             .end((err, res) => {
-                typeof res.body !== 'undefined' ? callback(res.body) : callback(err);
+                queryObj = {}; //Clear QueryObj
+                typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
     },
 
@@ -127,8 +130,14 @@ module.exports = {
             .send(config)
             .set('accept', 'json')
             .end((err, res) => {
-                typeof res.body !== 'undefined' ? callback(res.body) : callback(err);
+                typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
+    },
+
+    limit(amount) {
+        setQuery();
+        queryObj.query.limit = amount;
+        return this;
     },
 
     /**
@@ -139,7 +148,7 @@ module.exports = {
         request
             .get(`${host}/all`)
             .end((err, res) => {
-                typeof res.body !== 'undefined' ? callback(res.body) : callback(err);
+                typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
         request.get(`${host}/all`).on('response', (err, res, body) => {
             callback(body);
@@ -156,6 +165,7 @@ module.exports = {
             .send(config)
             .set('accept', 'json')
             .end();
+        return this;
     },
 
     /**

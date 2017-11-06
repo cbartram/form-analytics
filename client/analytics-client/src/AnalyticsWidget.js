@@ -1,5 +1,7 @@
 const request = require('superagent');
 
+//TODO uncomment before prod deployment
+//let host = 'http://34.237.224.226:3010';
 let host = 'http://localhost:3010';
 let queryObj = {};
 
@@ -117,6 +119,7 @@ module.exports = {
             .send(queryObj)
             .set('accept', 'json')
             .end((err, res) => {
+                queryObj = {}; //Clear QueryObj
                 typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
     },
@@ -129,6 +132,12 @@ module.exports = {
             .end((err, res) => {
                 typeof res !== 'undefined' ? callback(res.body) : callback(err);
             });
+    },
+
+    limit(amount) {
+        setQuery();
+        queryObj.query.limit = amount;
+        return this;
     },
 
     /**
