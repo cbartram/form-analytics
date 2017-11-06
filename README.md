@@ -54,7 +54,7 @@ We have several elements within our pizza creation form and we need analytics fo
 - Meat
 - Veggies
 
-For example many people might light sausage of their pizza we could suggest other options to them based on what we think they may like such as:
+For example many people might like sausage of their pizza we could suggest other options to them based on what we think they may like such as:
 - turkey
 - ham
 - bacon
@@ -87,13 +87,26 @@ To register a namespace use the endpoint `/form/register` with a POST request bo
 	"method": "per-subject-frequency"
 }
 ```
-The API provides a fluid way to query, insert, and run analytical functions on data, however, it is the responsibility of the programmer
-to wire up the data coming from the forms and pass it into the API for insertion.
+Upon the first form registration if the operation is successful the server will respond with the JSON that follows:
+```json
+{
+    "success": true,
+    data: []
+}
+```
+**Data will be an empty array** because you have not inserted any data into this namespace and so we cannot suggest relevant
+fields when there is no data in the next step you will learn how to insert data into this namespace for querying and predictions.
+
+The API provides a fluid way to query, insert, and run analytical functions on data, however, **it is the responsibility of the programmer
+to wire up the data coming from the forms and pass it into the API for insertion.**
 
 In a React App state is a perfect way to take input from the forms and use the AnalyticsWidget API insert the data directly into the correct namespace
 check out the example below:
 
 ```jsx
+import React, {Component} from 'react'
+
+export default class PizzaForm extends Component
             constructor() {
                 super();
 
@@ -103,6 +116,7 @@ check out the example below:
             }
 
             handleChange = (e) => this.setState({veggie: e.target.value)});
+
             insertData = () => {
                 const {veggie} = this.state;
 
@@ -122,49 +136,60 @@ check out the example below:
                 )
             }
 ```
+
 Notice how it is up to the **programmer to ensure input is updated to state when the `onChange` event occurs** and
 the `AnalyticsWidget` only serves to insert the form data into the proper namespace and table.
 
 Currently we know how to register new namespaces (when new forms are created), run analytics on form fields, and insert new form data
-into the correct namespace to allow for better predictions. But What about Querying specific data? What if our application has to use
-data for a specific user rather than the entire table or column? Nothing the fear the Query API is here!
+into the correct namespace to allow for better predictions. But What about Querying specific data? Nothing the fear the Query API is here!
 
 The Query API is a powerful part of the Analytics Widget and it allows you to quickly used chained method calls to reduce
-a data set based on specific constraints! Sounds fun right? Lets jump in!
+a data set based on specific constraints. Lets jump in!
 
 All Queries start with the `query()` method which tells the API that each method call henceforth is a constraint to the query.
-`query()` takes one parameter and thats the namespace you would like to query. The last query API call must be `exec()` which takes a callback
+`query()` takes no parameters and by default will create a brand new query to the database. The last query API call must be `exec()` which takes a callback
 function to retrieve the results of your query! That's it! The query API is beautiful because it can be as simple
 or complex as your needs!
 
 For instance:
 
 ```javascript
-AnalyticsWidget.query("Pizza.createForm").exec(data => {
+AnalyticsWidget.query().exec(data => {
     console.log(data);
 })
 ```
 We notice in the query above we invoke the query API with `query()` and then instantly end it with `exec()` so this query says
-"Get me all documents in the 'Pizza.createForm' namespace whether they be Crust Styles, Meats, Veggies it doesn't matter I want to see everything"
+"Get me all documents"
 
-We can constrain the data set by chaining the `table()` method to the query like so:
+We can constrain the data set by chaining the `databse()` method to the query like so:
 
 ```javascript
-AnalyticsWidget.query("Pizza.createForm").table("Meats").exec(data => {
+AnalyticsWidget.query().database("Pizza.createForm").table("Meats").exec(data => {
     console.log(data);
 })
 ```
 As you might have guessed this query pulls every 'Meat' document within the 'Pizza.createForm' namespace.
-We can add `and`, `like`, `where`, and `or` clauses as well to further constrain the data set!
+We can add `and`, `like`, `where`, `limit` and `or` clauses as well to further constrain the data set!
 
-Previously we mentioned filtering data for only a specific user and we can use the `onlyUser($userID)` method to ensure
-that each document that comes back is a document submitted by your user, simply pass in your applications unique user ID and
+Lets run through another example:
+
+```javascript
+AnalyticsWidget.query().database("Pizza.createForm").table("Veggies").like("Pepp").limit(10).exec(data => {
+    console.log(data);
+});
+```
+
+This query finds all documents in the Veggies namespace where the value includes the text "Pepp" (peppers would be returned in this instance)
+but we also constrain the data set to a maximum of 10 records.
+
+We can also use the `onlyUser($userID)` method to ensure
+that each document that comes back is a document submitted by your logged in user, simply pass in your applications unique user ID and
 the API takes care of the rest!
 
 How about running analytics on a custom data set? No problem!
 
 ```javascript
-AnalyticsWidget.query("Pizza.createForm").table("Meats").where("Turkey").and("Tomato").onlyUser("al9qI12W9").exec(data => {
+AnalyticsWidget.query().database("Pizza.createForm").table("Meats").where("Turkey").and("Tomato").onlyUser("al9qI12W9").exec(data => {
     //We can pass our data right into the analytics function!!
     AnalyticsWidget.analyze({
         data,
@@ -174,6 +199,9 @@ AnalyticsWidget.query("Pizza.createForm").table("Meats").where("Turkey").and("To
     });
 })
 ```
+
+As you can see the Query API is a powerful part of any developer's workflow; It aims to make it simple to pull out aggregated sets of data
+for analysis and prediction!
 
 Check out our API endpoints below!
 
@@ -191,14 +219,14 @@ Check out our API endpoints below!
 
 ## Configuration
 
-The `AnalyticsWidget` accepts a javascript configuration object as its first argument. The structure of the configuration
+The `AnalyticsWidget.registerPickPredictor()` method accepts a javascript configuration object as its first argument. The structure of the configuration
 object is as follows:
 
 ```json
 {
-	namespace: "Pizza.createForm",
-	elements: ["Veggies", "Meats", "Crust"],
-	method: "per-subject-frequency"
+	"namespace": "Pizza.createForm",
+	"elements": ["Veggies", "Meats", "Crust"],
+	"method": "per-subject-frequency"
 }
 ```
 The `namespace` property is **extremely** important as it determines how this data is queried and stored. Namespaces
@@ -208,14 +236,14 @@ is not used an input which could lead to bad data and poor analytical prediction
 The `elements` property is used to determine which form elements will have data stored for analytical processing
 Whenever the `registerPickPredictor()` method is called each element in the array is analyzed to do 1 of 2 options
 
-- 1. If it is a new form element it will Add it to the Form's namespace i.e it will create a slot for `Pizza.createForm.Veggies`
-- 2. If it is a previously recognized form element it will run the analytics defined by the `method` property on the given data set. An example config object looks like this
+- If it is a new form element it will Add it to the Form's namespace i.e it will create a slot for `Pizza.createForm.Veggies` to store information down the road
+- If it is a previously recognized form element it will run the analytics defined by the `method` property on the given data set. An example config object looks like this
 
 ```json
 {
-    namespace: "Pizza.toppingForm",
-    elements: ["Meats", "Veggies", "Cheese"],
-    method: "per-subject-frequency"
+    "namespace": "Pizza.toppingForm",
+    "elements": ["Meats", "Veggies", "Cheese"],
+    "method": "per-subject-frequency"
 }
 ```
 
@@ -242,18 +270,19 @@ below to learn how this object works to persist your data!
 
 ```json
 {
-	namespace: ["Pizza.createForm"],
-	elements: ["Crust", "Veggies"],
-	values: ["Pan", "Tomato"],
-	user: "59f9cbac106d3e7fe33cd33f"
+	"namespace": ["Pizza.createForm"],
+	"elements": ["Crust", "Veggies"],
+	"values": ["Pan", "Tomato"],
+	"user": "59f9cbac106d3e7fe33cd33f"
 }
 ```
 
 The above configuration object is very similar to the `registerPickPredictor()` object and has only one subtle difference!
-The `namespace` property should be formatted like this `AppName.formName` as each element is appended to the namespace and stored in a different "table" so data is confused when it is queried
+The `namespace` property should be formatted like this `AppName.formName` as each element is appended to the namespace and stored in a different "table" so data is not confused when it is queried
 The `elements` property is nearly the same as before and simply describes the elements from the form which are being inserted. (You can think of the elements like separate tables in a relational database)
-Finally the `values` property does exactly as the name suggests it specifies the value for the Crust "table" as well as the value for the "Veggies" table. You can think of it as the following query
-" INSERT INTO Veggies (value) VALUES 'Tomato' "
+Finally the `values` property does exactly as the name suggests it specifies the value for the Crust "table" as well as the value for the "Veggies" table. You can think of it as the following query:
+
+`INSERT INTO Veggies (value) VALUES 'Tomato'`
 
 Notice the special `user` property which can be applied if your form is currently collecting data from a logged in user. You can specify a `user` property in your
 request query (in the next section) to filter all of the data made by a specific user. This allows you to ensure that in a member search form sally is not receiving
@@ -277,7 +306,7 @@ Simply hit the query endpoint (`/query`) with a POST request and a body in this 
 ```
 
 The query api has been designed to be easily readable. The query above in SQL reads as follows **SELECT * FROM Pizza.createForm.Meat WHERE Meat = 'Turkey' AND references = 'Tomato' AND references = 'Thin' **
-The query isn't exact SQL because of database inconsistencies however, it is relatively close. With this query API you can specify and AND, OR, USER, LIKE or WHERE clause to find documents matching the criteria.
+The query isn't exact SQL because of database inconsistencies however, it is relatively close. With this query API you can specify and AND, OR, USER, LIKE, LIMIT, or WHERE clause to find documents matching the criteria.
 
 Lets run through a few simple queries to help get you accustomed to the API!
 

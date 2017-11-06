@@ -81,7 +81,7 @@ app.options("/*", function(req, res, next){
  * Handles registering a new Namespace (for a new form)
  * or Running Analytics on an existing namespace
  */
-app.post('/form/register', (req, res) => {
+app.post('/form/register', async (req, res) => {
     //Get the namespace & Required variables i.e. ApplicationName.formName
     const namespace = req.body.namespace;
     const elements = req.body.elements;
@@ -148,7 +148,7 @@ app.post('/form/register', (req, res) => {
 /**
  * Handles a basic user signup
  */
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
     let {name, email, password, username }  = req.body;
 
     let user = new User({name, email, password, username});
@@ -163,7 +163,7 @@ app.post('/signup', (req, res) => {
 
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-const runAnalytics = (dataset, method) => {
+const runAnalytics = async (dataset, method) => {
 
     let analyticsMethod = {
         'per-subject-recent': () => {
@@ -187,7 +187,7 @@ const runAnalytics = (dataset, method) => {
 /**
  * Handles Running Analytics on a Custom Set of Data
  */
-app.post('/analytics', (req, res) => {
+app.post('/analytics', async (req, res) => {
     const data = req.body.data;
     const method = req.body.method;
 
@@ -200,7 +200,7 @@ app.post('/analytics', (req, res) => {
  * Handles Inserting data into Mongo but does not run analytics
  * this is how the classifier is updated when the Submit button is pressed
  */
-app.post('/insert', (req, res) => {
+app.post('/insert', async  (req, res) => {
     const formNamespace = req.body.namespace; //Pizza.createForm
     const elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
     const elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
@@ -291,7 +291,7 @@ app.get('/all', (req, res) => {
     });
 });
 
-app.post('/query', (req, res) => {
+app.post('/query', async (req, res) => {
     try {
         var hasTable = req.body.hasOwnProperty('table');
         var hasAnd = req.body.query.hasOwnProperty('and');
@@ -342,11 +342,7 @@ app.post('/query', (req, res) => {
 
 });
 
-async function foo() {
-    await Element.find({});
-}
-
-app.get('*', (req, res) => {
+app.get('*', async (req, res) => {
     res.json({success: true, msg: 'The server is active and running!'});
 });
 

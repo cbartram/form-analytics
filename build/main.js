@@ -62,7 +62,7 @@ module.exports =
 /******/ 	__webpack_require__.p = "/";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 3);
+/******/ 	return __webpack_require__(__webpack_require__.s = 2);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -75,57 +75,31 @@ module.exports = require("mongoose");
 /* 1 */
 /***/ (function(module, exports) {
 
-module.exports = require("chalk");
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
 module.exports = require("lodash");
 
 /***/ }),
-/* 3 */
+/* 2 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(4);
+module.exports = __webpack_require__(3);
 
 
 /***/ }),
-/* 4 */
+/* 3 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* WEBPACK VAR INJECTION */(function(__dirname) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__ = __webpack_require__(6);
+/* WEBPACK VAR INJECTION */(function(__dirname) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__ = __webpack_require__(4);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__);
 
 
-var foo = function () {
-    var _ref = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee() {
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee$(_context) {
-            while (1) {
-                switch (_context.prev = _context.next) {
-                    case 0:
-                        _context.next = 2;
-                        return Element.find({});
-
-                    case 2:
-                    case 'end':
-                        return _context.stop();
-                }
-            }
-        }, _callee, this);
-    }));
-
-    return function foo() {
-        return _ref.apply(this, arguments);
-    };
-}();
+var _this = this;
 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
-var debug = __webpack_require__(20)('form-analytics:server');
-var http = __webpack_require__(21);
+var debug = __webpack_require__(6)('form-analytics:server');
+var http = __webpack_require__(7);
 var express = __webpack_require__(8);
 var path = __webpack_require__(9);
 var logger = __webpack_require__(10);
@@ -134,16 +108,16 @@ var cookieParser = __webpack_require__(12);
 var bluebird = __webpack_require__(13);
 var bodyParser = __webpack_require__(14);
 var mongoose = __webpack_require__(0);
-var chalk = __webpack_require__(1);
-var _ = __webpack_require__(2);
-var Analytics = __webpack_require__(23);
+var chalk = __webpack_require__(15);
+var _ = __webpack_require__(1);
+var Analytics = __webpack_require__(16);
 
 var app = express();
 
 //Models
-var Form = __webpack_require__(17);
-var Element = __webpack_require__(18);
-var User = __webpack_require__(19);
+var Form = __webpack_require__(18);
+var Element = __webpack_require__(19);
+var User = __webpack_require__(20);
 
 bluebird.promisifyAll(mongoose);
 mongoose.Promise = global.Promise;
@@ -204,86 +178,119 @@ app.options("/*", function (req, res, next) {
  * Handles registering a new Namespace (for a new form)
  * or Running Analytics on an existing namespace
  */
-app.post('/form/register', function (req, res) {
-    //Get the namespace & Required variables i.e. ApplicationName.formName
-    var namespace = req.body.namespace;
-    var elements = req.body.elements;
-    var method = req.body.method;
+app.post('/form/register', function () {
+    var _ref = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee(req, res) {
+        var namespace, elements, method;
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee$(_context) {
+            while (1) {
+                switch (_context.prev = _context.next) {
+                    case 0:
+                        //Get the namespace & Required variables i.e. ApplicationName.formName
+                        namespace = req.body.namespace;
+                        elements = req.body.elements;
+                        method = req.body.method;
 
-    Form.find({ namespace: namespace }, function (err, record) {
-        //There was no namespace this is a new form
-        if (record.length <= 0) {
-            //Create a new namespace
-            new Form({ namespace: namespace, elements: elements }).save(function (err, record) {
-                console.log(chalk.green('\u2713 Successfully created new Namespace: ' + namespace));
 
-                res.json({
-                    success: true,
-                    data: []
-                });
-            });
-        } else {
+                        Form.find({ namespace: namespace }, function (err, record) {
+                            //There was no namespace this is a new form
+                            if (record.length <= 0) {
+                                //Create a new namespace
+                                new Form({ namespace: namespace, elements: elements }).save(function (err, record) {
+                                    console.log(chalk.green('\u2713 Successfully created new Namespace: ' + namespace));
 
-            //Find the different element & Join them into the Form Namespace
-            record[0].set({ elements: _.union(elements.filter(function (e) {
-                    return !record[0].elements.includes(e);
-                }), record[0].elements) });
-            record[0].save();
+                                    res.json({
+                                        success: true,
+                                        data: []
+                                    });
+                                });
+                            } else {
 
-            console.log(chalk.green('\u2713 Namespace: ' + namespace + ' has been located running analytics...'));
+                                //Find the different element & Join them into the Form Namespace
+                                record[0].set({ elements: _.union(elements.filter(function (e) {
+                                        return !record[0].elements.includes(e);
+                                    }), record[0].elements) });
+                                record[0].save();
 
-            var promises = [];
-            var responseData = [];
+                                console.log(chalk.green('\u2713 Namespace: ' + namespace + ' has been located running analytics...'));
 
-            elements.forEach(function (element) {
-                console.log(chalk.green('\u2713 Found Data for Element Namespace: ' + element));
-                //Find each element given its parent namespace
-                var p = Element.find({ namespace: namespace + '.' + element }).exec().then(function (val) {
-                    //Acts as a switch statement to effectively compute based on the specified method
-                    var analyticsMethod = {
-                        'per-subject-recent': function perSubjectRecent() {
-                            return Analytics.perSubjectRecent(val);
-                        },
-                        'per-subject-frequency': function perSubjectFrequency() {
-                            return Analytics.perSubjectFrequency(val);
-                        },
-                        'decision-tree': function decisionTree() {
-                            return Analytics.decisionTree(val);
-                        },
-                        'bayesian': function bayesian() {
-                            return Analytics.bayesian(val);
-                        }
-                    };
-                    //Push the results of the analytics to an empty array
-                    responseData.push(analyticsMethod[method]());
-                });
-                promises.push(p);
-            });
-            Promise.all(promises).then(function () {
-                res.json(responseData);
-            }).catch(function (err) {
-                console.error(err);
-            });
-        }
-    });
-});
+                                var promises = [];
+                                var responseData = [];
+
+                                elements.forEach(function (element) {
+                                    console.log(chalk.green('\u2713 Found Data for Element Namespace: ' + element));
+                                    //Find each element given its parent namespace
+                                    var p = Element.find({ namespace: namespace + '.' + element }).exec().then(function (val) {
+                                        //Acts as a switch statement to effectively compute based on the specified method
+                                        var analyticsMethod = {
+                                            'per-subject-recent': function perSubjectRecent() {
+                                                return Analytics.perSubjectRecent(val);
+                                            },
+                                            'per-subject-frequency': function perSubjectFrequency() {
+                                                return Analytics.perSubjectFrequency(val);
+                                            },
+                                            'decision-tree': function decisionTree() {
+                                                return Analytics.decisionTree(val);
+                                            },
+                                            'bayesian': function bayesian() {
+                                                return Analytics.bayesian(val);
+                                            }
+                                        };
+                                        //Push the results of the analytics to an empty array
+                                        responseData.push(analyticsMethod[method]());
+                                    });
+                                    promises.push(p);
+                                });
+                                Promise.all(promises).then(function () {
+                                    res.json(responseData);
+                                }).catch(function (err) {
+                                    console.error(err);
+                                });
+                            }
+                        });
+
+                    case 4:
+                    case 'end':
+                        return _context.stop();
+                }
+            }
+        }, _callee, _this);
+    }));
+
+    return function (_x, _x2) {
+        return _ref.apply(this, arguments);
+    };
+}());
 
 /**
  * Handles a basic user signup
  */
-app.post('/signup', function (req, res) {
-    var _req$body = req.body,
-        name = _req$body.name,
-        email = _req$body.email,
-        password = _req$body.password,
-        username = _req$body.username;
+app.post('/signup', function () {
+    var _ref2 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee2(req, res) {
+        var _req$body, name, email, password, username, user;
 
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee2$(_context2) {
+            while (1) {
+                switch (_context2.prev = _context2.next) {
+                    case 0:
+                        _req$body = req.body, name = _req$body.name, email = _req$body.email, password = _req$body.password, username = _req$body.username;
+                        user = new User({ name: name, email: email, password: password, username: username });
 
-    var user = new User({ name: name, email: email, password: password, username: username });
-    user.save();
+                        user.save();
 
-    res.json({ success: true, user: user });
-});
+                        res.json({ success: true, user: user });
+
+                    case 4:
+                    case 'end':
+                        return _context2.stop();
+                }
+            }
+        }, _callee2, _this);
+    }));
+
+    return function (_x3, _x4) {
+        return _ref2.apply(this, arguments);
+    };
+}());
 
 /**
  * Handles Calculating the Analytics on a custom dataset
@@ -291,117 +298,175 @@ app.post('/signup', function (req, res) {
 
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-var runAnalytics = function runAnalytics(dataset, method) {
+var runAnalytics = function () {
+    var _ref3 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee3(dataset, method) {
+        var analyticsMethod;
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee3$(_context3) {
+            while (1) {
+                switch (_context3.prev = _context3.next) {
+                    case 0:
+                        analyticsMethod = {
+                            'per-subject-recent': function perSubjectRecent() {
+                                return Analytics.perSubjectRecent(dataset);
+                            },
+                            'per-subject-frequency': function perSubjectFrequency() {
+                                return Analytics.perSubjectFrequency(dataset);
+                            },
+                            'decision-tree': function decisionTree() {
+                                return Analytics.decisionTree(dataset);
+                            },
+                            'bayesian': function bayesian() {
+                                return Analytics.bayesian(dataset);
+                            }
+                        };
 
-    var analyticsMethod = {
-        'per-subject-recent': function perSubjectRecent() {
-            return Analytics.perSubjectRecent(dataset);
-        },
-        'per-subject-frequency': function perSubjectFrequency() {
-            return Analytics.perSubjectFrequency(dataset);
-        },
-        'decision-tree': function decisionTree() {
-            return Analytics.decisionTree(dataset);
-        },
-        'bayesian': function bayesian() {
-            return Analytics.bayesian(dataset);
-        }
+                        //Push the results of the analytics to an empty array
+
+                        return _context3.abrupt('return', analyticsMethod[method]());
+
+                    case 2:
+                    case 'end':
+                        return _context3.stop();
+                }
+            }
+        }, _callee3, _this);
+    }));
+
+    return function runAnalytics(_x5, _x6) {
+        return _ref3.apply(this, arguments);
     };
-
-    //Push the results of the analytics to an empty array
-    return analyticsMethod[method]();
-};
+}();
 
 /**
  * Handles Running Analytics on a Custom Set of Data
  */
-app.post('/analytics', function (req, res) {
-    var data = req.body.data;
-    var method = req.body.method;
+app.post('/analytics', function () {
+    var _ref4 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee4(req, res) {
+        var data, method;
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee4$(_context4) {
+            while (1) {
+                switch (_context4.prev = _context4.next) {
+                    case 0:
+                        data = req.body.data;
+                        method = req.body.method;
 
-    res.json({ data: runAnalytics(data, method) });
-});
+
+                        res.json({ data: runAnalytics(data, method) });
+
+                    case 3:
+                    case 'end':
+                        return _context4.stop();
+                }
+            }
+        }, _callee4, _this);
+    }));
+
+    return function (_x7, _x8) {
+        return _ref4.apply(this, arguments);
+    };
+}());
 
 /**
  * Handles Inserting data into Mongo but does not run analytics
  * this is how the classifier is updated when the Submit button is pressed
  */
-app.post('/insert', function (req, res) {
-    var formNamespace = req.body.namespace; //Pizza.createForm
-    var elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
-    var elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
-    var user = req.body.user; //UserID
+app.post('/insert', function () {
+    var _ref5 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee5(req, res) {
+        var formNamespace, elementNamespaces, elementValues, user;
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee5$(_context5) {
+            while (1) {
+                switch (_context5.prev = _context5.next) {
+                    case 0:
+                        formNamespace = req.body.namespace; //Pizza.createForm
 
-    if (typeof user === 'undefined') {
-        user = null;
-    }
+                        elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
 
-    if (elementNamespaces.length !== elementValues.length) {
-        console.log(chalk.hex('#e81a00')('\u2715 ElementOutOfBoundsException Error: More Elements than Values to fill.'));
-        res.json({ success: false, msg: 'There were more namespaces than values to fill or vice versa....Please ensure both arrays are of the same length.' });
-    } else {
+                        elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
 
-        //Ensure the elements exist in the Form Namespace
-        Form.find({ namespace: formNamespace }, function (err, record) {
-            if (typeof record !== "undefined" && record.length > 0) {
-                if (!elementNamespaces.every(function (elem) {
-                    return record[0].elements.indexOf(elem) > -1;
-                })) {
+                        user = req.body.user; //UserID
 
-                    //An elementNamespace is not already defined in the Form model
-                    console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'));
-                    res.json({
-                        success: false,
-                        msg: 'UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'
-                    });
-                } else {
-                    var records = [];
+                        if (typeof user === 'undefined') {
+                            user = null;
+                        }
 
-                    //Add a new value for each namespace
-                    elementNamespaces.map(function (value, key) {
-                        //Remove the Item being stored from referencing itself
-                        var references = elementValues.filter(function (e) {
-                            return e !== elementValues[key];
-                        });
-                        var namespaces = elementNamespaces.filter(function (e) {
-                            return e !== elementNamespaces[key];
-                        });
+                        if (elementNamespaces.length !== elementValues.length) {
+                            console.log(chalk.hex('#e81a00')('\u2715 ElementOutOfBoundsException Error: More Elements than Values to fill.'));
+                            res.json({ success: false, msg: 'There were more namespaces than values to fill or vice versa....Please ensure both arrays are of the same length.' });
+                        } else {
 
-                        //Map over each reference and convert it into an object
-                        var finalRef = references.map(function (ele, key) {
-                            return {
-                                namespace: formNamespace + '.' + namespaces[key],
-                                value: ele
-                            };
-                        });
+                            //Ensure the elements exist in the Form Namespace
+                            Form.find({ namespace: formNamespace }, function (err, record) {
+                                if (typeof record !== "undefined" && record.length > 0) {
+                                    if (!elementNamespaces.every(function (elem) {
+                                        return record[0].elements.indexOf(elem) > -1;
+                                    })) {
 
-                        records.push(new Element({
-                            namespace: formNamespace + '.' + value,
-                            value: elementValues[key],
-                            user: user,
-                            references: finalRef,
-                            updatedAt: new Date(),
-                            createdAt: new Date()
-                        }));
-                    });
+                                        //An elementNamespace is not already defined in the Form model
+                                        console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'));
+                                        res.json({
+                                            success: false,
+                                            msg: 'UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'
+                                        });
+                                    } else {
+                                        var records = [];
 
-                    //Insert Bulk operation
-                    Element.collection.insert(records, function (err, data) {
-                        if (err) res.json({ success: false, err: err });
-                        console.log(chalk.green('\u2713 Element data saved!'));
-                        res.json({ success: true });
-                    });
+                                        //Add a new value for each namespace
+                                        elementNamespaces.map(function (value, key) {
+                                            //Remove the Item being stored from referencing itself
+                                            var references = elementValues.filter(function (e) {
+                                                return e !== elementValues[key];
+                                            });
+                                            var namespaces = elementNamespaces.filter(function (e) {
+                                                return e !== elementNamespaces[key];
+                                            });
+
+                                            //Map over each reference and convert it into an object
+                                            var finalRef = references.map(function (ele, key) {
+                                                return {
+                                                    namespace: formNamespace + '.' + namespaces[key],
+                                                    value: ele
+                                                };
+                                            });
+
+                                            records.push(new Element({
+                                                namespace: formNamespace + '.' + value,
+                                                value: elementValues[key],
+                                                user: user,
+                                                references: finalRef,
+                                                updatedAt: new Date(),
+                                                createdAt: new Date()
+                                            }));
+                                        });
+
+                                        //Insert Bulk operation
+                                        Element.collection.insert(records, function (err, data) {
+                                            if (err) res.json({ success: false, err: err });
+                                            console.log(chalk.green('\u2713 Element data saved!'));
+                                            res.json({ success: true });
+                                        });
+                                    }
+                                } else {
+                                    console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'));
+                                    res.json({
+                                        success: false,
+                                        msg: 'UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'
+                                    });
+                                }
+                            });
+                        }
+
+                    case 6:
+                    case 'end':
+                        return _context5.stop();
                 }
-            } else {
-                console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'));
-                res.json({
-                    success: false,
-                    msg: 'UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'
-                });
             }
-        });
-    }
-});
+        }, _callee5, _this);
+    }));
+
+    return function (_x9, _x10) {
+        return _ref5.apply(this, arguments);
+    };
+}());
 
 /**
  * Deletes all records in a Collection
@@ -422,59 +487,95 @@ app.get('/all', function (req, res) {
     });
 });
 
-app.post('/query', function (req, res) {
-    try {
-        var hasTable = req.body.hasOwnProperty('table');
-        var hasAnd = req.body.query.hasOwnProperty('and');
-        var hasOr = req.body.query.hasOwnProperty('or');
-        var hasWhere = req.body.query.hasOwnProperty('where');
-        var hasUser = req.body.query.hasOwnProperty('user');
-        var hasLike = req.body.query.hasOwnProperty('like');
-        var hasLimit = req.body.query.hasOwnProperty('limit');
-    } catch (err) {
-        //They are missing some properties of the query
-        console.log('\u2715 Part of the Query is Undefined');
-    }
+app.post('/query', function () {
+    var _ref6 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee6(req, res) {
+        var hasTable, hasAnd, hasOr, hasWhere, hasUser, hasLike, hasLimit, query;
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee6$(_context6) {
+            while (1) {
+                switch (_context6.prev = _context6.next) {
+                    case 0:
+                        try {
+                            hasTable = req.body.hasOwnProperty('table');
+                            hasAnd = req.body.query.hasOwnProperty('and');
+                            hasOr = req.body.query.hasOwnProperty('or');
+                            hasWhere = req.body.query.hasOwnProperty('where');
+                            hasUser = req.body.query.hasOwnProperty('user');
+                            hasLike = req.body.query.hasOwnProperty('like');
+                            hasLimit = req.body.query.hasOwnProperty('limit');
+                        } catch (err) {
+                            //They are missing some properties of the query
+                            console.log('\u2715 Part of the Query is Undefined');
+                        }
 
-    //Basic Error Checking
-    if (hasAnd && hasOr) {
-        res.json({
-            error: true,
-            msg: 'At this time you must either have an "and" property or an "or" property but not both.'
-        });
-    }
+                        //Basic Error Checking
+                        if (hasAnd && hasOr) {
+                            res.json({
+                                error: true,
+                                msg: 'At this time you must either have an "and" property or an "or" property but not both.'
+                            });
+                        }
 
-    if (hasLike && hasWhere) {
-        res.json({
-            error: true,
-            msg: 'At this time you must either have a "where" clause or a "like" clause but not both'
-        });
-    }
+                        if (hasLike && hasWhere) {
+                            res.json({
+                                error: true,
+                                msg: 'At this time you must either have a "where" clause or a "like" clause but not both'
+                            });
+                        }
 
-    //Build up the query from an empty object
-    var query = {};
+                        //Build up the query from an empty object
+                        query = {};
 
-    //Match Req body to query values
-    !hasTable ? query.namespace = {
-        $regex: req.body.namespace,
-        $options: 'i'
-    } : query.namespace = req.body.namespace + '.' + req.body.table;
-    hasWhere ? query.value = req.body.query.where : null;
-    hasAnd ? query['references.value'] = { $all: req.body.query.and } : null;
-    hasOr ? query['references.value'] = { $in: req.body.query.or } : null;
-    hasUser ? query.user = req.body.query.user : null;
-    hasLike ? query.value = { $regex: '.*' + req.body.query.like + '.*', $options: 'i' } : null;
+                        //Match Req body to query values
 
-    hasLimit ? Element.find(query).sort({ 'value': -1 }).limit(req.body.query.limit).exec(function (err, docs) {
-        return res.json(docs);
-    }) : Element.find(query, function (err, docs) {
-        res.json(docs);
-    });
-});
+                        !hasTable ? query.namespace = {
+                            $regex: req.body.namespace,
+                            $options: 'i'
+                        } : query.namespace = req.body.namespace + '.' + req.body.table;
+                        hasWhere ? query.value = req.body.query.where : null;
+                        hasAnd ? query['references.value'] = { $all: req.body.query.and } : null;
+                        hasOr ? query['references.value'] = { $in: req.body.query.or } : null;
+                        hasUser ? query.user = req.body.query.user : null;
+                        hasLike ? query.value = { $regex: '.*' + req.body.query.like + '.*', $options: 'i' } : null;
 
-app.get('*', function (req, res) {
-    res.json({ success: true, msg: 'The server is active and running!' });
-});
+                        hasLimit ? Element.find(query).sort({ 'value': -1 }).limit(req.body.query.limit).exec(function (err, docs) {
+                            return res.json(docs);
+                        }) : Element.find(query, function (err, docs) {
+                            res.json(docs);
+                        });
+
+                    case 11:
+                    case 'end':
+                        return _context6.stop();
+                }
+            }
+        }, _callee6, _this);
+    }));
+
+    return function (_x11, _x12) {
+        return _ref6.apply(this, arguments);
+    };
+}());
+
+app.get('*', function () {
+    var _ref7 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee7(req, res) {
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee7$(_context7) {
+            while (1) {
+                switch (_context7.prev = _context7.next) {
+                    case 0:
+                        res.json({ success: true, msg: 'The server is active and running!' });
+
+                    case 1:
+                    case 'end':
+                        return _context7.stop();
+                }
+            }
+        }, _callee7, _this);
+    }));
+
+    return function (_x13, _x14) {
+        return _ref7.apply(this, arguments);
+    };
+}());
 
 // error handler
 app.use(function (err, req, res) {
@@ -550,18 +651,29 @@ function onListening() {
 /* WEBPACK VAR INJECTION */}.call(__webpack_exports__, "src"))
 
 /***/ }),
-/* 5 */,
-/* 6 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(7);
+module.exports = __webpack_require__(5);
 
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports) {
+
+module.exports = require("regenerator-runtime");
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports) {
+
+module.exports = require("debug");
 
 /***/ }),
 /* 7 */
 /***/ (function(module, exports) {
 
-module.exports = require("regenerator-runtime");
+module.exports = require("http");
 
 /***/ }),
 /* 8 */
@@ -606,103 +718,17 @@ module.exports = require("bluebird");
 module.exports = require("body-parser");
 
 /***/ }),
-/* 15 */,
+/* 15 */
+/***/ (function(module, exports) {
+
+module.exports = require("chalk");
+
+/***/ }),
 /* 16 */
-/***/ (function(module, exports) {
-
-module.exports = require("decision-tree");
-
-/***/ }),
-/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/**
- * Created by christianbartram on 10/18/17.
- */
-var mongoose = __webpack_require__(0);
-
-var Form = mongoose.Schema({
-  namespace: String,
-  elements: Array,
-  output: String,
-  method: String
-});
-
-/**
- * Schema Methods
- */
-
-//Export the Model
-module.exports = mongoose.model('Form', Form);
-
-/***/ }),
-/* 18 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/**
- * Created by christianbartram on 10/18/17.
- */
-var mongoose = __webpack_require__(0);
-
-var Element = mongoose.Schema({
-  namespace: String, //Element on the forms specific namespace/id
-  type: String, //Select field, radio button, checkbox etc...
-  value: String,
-  user: String,
-  references: Array,
-  updatedAt: Date,
-  createdAt: Date
-});
-
-/**
- * Schema Methods
- */
-
-//Export the Model
-module.exports = mongoose.model('Element', Element);
-
-/***/ }),
-/* 19 */
-/***/ (function(module, exports, __webpack_require__) {
-
-/**
- * Created by christianbartram on 10/18/17.
- */
-var mongoose = __webpack_require__(0);
-
-var User = mongoose.Schema({
-  name: String,
-  username: String,
-  email: String,
-  password: String
-});
-
-/**
- * Schema Methods
- */
-
-//Export the Model
-module.exports = mongoose.model('User', User);
-
-/***/ }),
-/* 20 */
-/***/ (function(module, exports) {
-
-module.exports = require("debug");
-
-/***/ }),
-/* 21 */
-/***/ (function(module, exports) {
-
-module.exports = require("http");
-
-/***/ }),
-/* 22 */,
-/* 23 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var _ = __webpack_require__(2);
-var DecisionTree = __webpack_require__(16);
+var _ = __webpack_require__(1);
+var DecisionTree = __webpack_require__(17);
 
 module.exports = {
     /**
@@ -780,6 +806,84 @@ module.exports = {
         });
     }
 };
+
+/***/ }),
+/* 17 */
+/***/ (function(module, exports) {
+
+module.exports = require("decision-tree");
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/**
+ * Created by christianbartram on 10/18/17.
+ */
+var mongoose = __webpack_require__(0);
+
+var Form = mongoose.Schema({
+  namespace: String,
+  elements: Array,
+  output: String,
+  method: String
+});
+
+/**
+ * Schema Methods
+ */
+
+//Export the Model
+module.exports = mongoose.model('Form', Form);
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/**
+ * Created by christianbartram on 10/18/17.
+ */
+var mongoose = __webpack_require__(0);
+
+var Element = mongoose.Schema({
+  namespace: String, //Element on the forms specific namespace/id
+  type: String, //Select field, radio button, checkbox etc...
+  value: String,
+  user: String,
+  references: Array,
+  updatedAt: Date,
+  createdAt: Date
+});
+
+/**
+ * Schema Methods
+ */
+
+//Export the Model
+module.exports = mongoose.model('Element', Element);
+
+/***/ }),
+/* 20 */
+/***/ (function(module, exports, __webpack_require__) {
+
+/**
+ * Created by christianbartram on 10/18/17.
+ */
+var mongoose = __webpack_require__(0);
+
+var User = mongoose.Schema({
+  name: String,
+  username: String,
+  email: String,
+  password: String
+});
+
+/**
+ * Schema Methods
+ */
+
+//Export the Model
+module.exports = mongoose.model('User', User);
 
 /***/ })
 /******/ ]);
