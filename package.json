@@ -5,7 +5,8 @@
   "proxy": "http://localhost:3010",
   "scripts": {
     "build": "backpack build",
-    "start": "backpack"
+    "dev": "backpack",
+    "start": "node ./build/main.js"
   },
   "dependencies": {
     "analytics-api-fb": "^1.0.0",
