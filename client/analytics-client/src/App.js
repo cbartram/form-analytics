@@ -36,7 +36,8 @@ class App extends Component {
         AnalyticsWidget.registerPickPredictor({
             namespace: "Pizza.createForm",
             elements: ["Meats", "Veggies", "Crust Style"],
-            method: "per-subject-frequency"
+            method: "per-subject-frequency",
+            limit: 3
         }, (body) => {
             typeof body !== 'undefined' &&
             //Set state for our prediction results
@@ -45,7 +46,7 @@ class App extends Component {
         });
 
         //Or Do a custom query for this specific user and get his/her results
-        AnalyticsWidget.query("Pizza.createForm").table("Crust Style").exec(res => {
+        AnalyticsWidget.query().database("Pizza.createForm").table("Crust Style").exec(res => {
            //The Query's Dataset 
            console.log("Custom Query Response", res);
 
@@ -78,14 +79,14 @@ class App extends Component {
             });
 
             //Re-run Analytics
-            AnalyticsWidget.query('Pizza.createForm').onlyUser(uuid).exec(data => {
+            AnalyticsWidget.query().database('Pizza.createForm').onlyUser(uuid).exec(data => {
                //We now have a defined data set to run the analytics on
                 AnalyticsWidget.analyze({
                     data,
                     method: 'per-subject-frequency'
                 }, prediction => {
                     console.log(prediction);
-                  // this.setState({prediction});
+                   this.setState({prediction});
                 });
             });
 

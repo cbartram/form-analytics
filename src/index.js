@@ -81,11 +81,16 @@ app.options("/*", function(req, res, next){
  * Handles registering a new Namespace (for a new form)
  * or Running Analytics on an existing namespace
  */
-app.post('/form/register', (req, res) => {
+app.post('/form/register', async (req, res) => {
     //Get the namespace & Required variables i.e. ApplicationName.formName
     const namespace = req.body.namespace;
     const elements = req.body.elements;
     const method = req.body.method;
+    let limit;
+
+    if(req.body.hasOwnProperty('limit')) {
+         limit = req.body.limit;
+    }
 
     Form.find({namespace}, (err, record) => {
         //There was no namespace this is a new form
@@ -96,7 +101,7 @@ app.post('/form/register', (req, res) => {
 
                 res.json({
                     success:true,
-                    data: []
+                    namespace
                 })
             });
 
@@ -105,7 +110,6 @@ app.post('/form/register', (req, res) => {
             //Find the different element & Join them into the Form Namespace
             record[0].set({elements: _.union(elements.filter(e => !record[0].elements.includes(e)), record[0].elements)});
             record[0].save();
-
 
             console.log(chalk.green(`\u2713 Namespace: ${namespace} has been located running analytics...`));
 
@@ -119,16 +123,16 @@ app.post('/form/register', (req, res) => {
                     //Acts as a switch statement to effectively compute based on the specified method
                     let analyticsMethod = {
                         'per-subject-recent': () => {
-                            return  Analytics.perSubjectRecent(val);
+                            return  Analytics.perSubjectRecent(val, limit);
                         },
                         'per-subject-frequency': () => {
-                            return Analytics.perSubjectFrequency(val);
+                            return Analytics.perSubjectFrequency(val, limit);
                         },
                         'decision-tree': () => {
-                            return Analytics.decisionTree(val);
+                            return Analytics.decisionTree(val, limit);
                         },
                         'bayesian': () => {
-                            return Analytics.bayesian(val);
+                            return Analytics.bayesian(val, limit);
                         }
                     };
                     //Push the results of the analytics to an empty array
@@ -148,7 +152,7 @@ app.post('/form/register', (req, res) => {
 /**
  * Handles a basic user signup
  */
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
     let {name, email, password, username }  = req.body;
 
     let user = new User({name, email, password, username});
@@ -163,20 +167,20 @@ app.post('/signup', (req, res) => {
 
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-const runAnalytics = (dataset, method) => {
+const runAnalytics = async (dataset, method, limit = 3) => {
 
     let analyticsMethod = {
         'per-subject-recent': () => {
-            return  Analytics.perSubjectRecent(dataset);
+            return  Analytics.perSubjectRecent(dataset, limit);
         },
         'per-subject-frequency': () => {
-            return Analytics.perSubjectFrequency(dataset);
+            return Analytics.perSubjectFrequency(dataset, limit);
         },
         'decision-tree': () => {
-            return Analytics.decisionTree(dataset);
+            return Analytics.decisionTree(dataset, limit);
         },
         'bayesian': () => {
-            return Analytics.bayesian(dataset);
+            return Analytics.bayesian(dataset, limit);
         }
     };
 
@@ -185,13 +189,77 @@ const runAnalytics = (dataset, method) => {
 };
 
 /**
- * Handles Running Analytics on a Custom Set of Data
+ * Sorts JSON by specified object property
+ * @param data Array JSON data to sort
+ * @param prop String Object property name to sort by
+ * @param asc boolean True to sort in ascending order
+ * @returns {Aggregate|Query|*|Array.<T>}
  */
-app.post('/analytics', (req, res) => {
+const sortResults = (data, prop, asc) => {
+    data = data.sort((a, b) => {
+        if (asc) {
+            return (a[prop] > b[prop]) ? 1 : ((a[prop] < b[prop]) ? -1 : 0);
+        } else {
+            return (b[prop] > a[prop]) ? 1 : ((b[prop] < a[prop]) ? -1 : 0);
+        }
+    });
+
+    return data;
+};
+
+/**
+ * Handles Running Analytics on a Custom Set of Data
+ * This method will do 3 things
+ * 1.) Find all unique namespaces in the input data set
+ * 2.) For each unique namespace run the specified analytics method on all of the data in that namespace
+ * 3.) return an array with X amount of nested arrays representing the analysis for each unique namespace
+ */
+app.post('/analytics', async (req, res) => {
     const data = req.body.data;
     const method = req.body.method;
+    let limit;
 
-    res.json({data: runAnalytics(data, method)});
+    if(req.body.hasOwnProperty('limit')) {
+        limit = req.body.limit;
+    }
+
+
+    data.forEach(d => {
+       if(d.namespace === 'Pizza.createForm.Veggies') {
+           console.log(d);
+       }
+    });
+
+    let namespaces = []; //Array holding all unique namespace
+    let analysis = []; //Array holding analysis for each unique namespace
+
+    let sortedData = sortResults(data, 'namespace', true);
+
+    for(let i = 0; i < sortedData.length; i++) {
+        if(!_.includes(namespaces, sortedData[i].namespace)) {
+            namespaces.push(sortedData[i].namespace)
+        }
+    }
+
+    //Filter the data and run the analytics
+    namespaces.forEach(namespace => {
+        let temp = [];
+
+        //TODO for some reason filter produces inconsistent results...weird..gonna have to filter manually for now
+       data.forEach(d => {
+          if(d.namespace === namespace) {
+              temp.push(d);
+          }
+       });
+
+       analysis.push(runAnalytics(temp, method, limit));
+    });
+
+    Promise.all(analysis).then(result => {
+        res.json(result);
+    }).catch((err) => {
+        console.error(err);
+    });
 
 });
 
@@ -200,7 +268,7 @@ app.post('/analytics', (req, res) => {
  * Handles Inserting data into Mongo but does not run analytics
  * this is how the classifier is updated when the Submit button is pressed
  */
-app.post('/insert', (req, res) => {
+app.post('/insert', async  (req, res) => {
     const formNamespace = req.body.namespace; //Pizza.createForm
     const elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
     const elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
@@ -291,7 +359,7 @@ app.get('/all', (req, res) => {
     });
 });
 
-app.post('/query', (req, res) => {
+app.post('/query', async (req, res) => {
     try {
         var hasTable = req.body.hasOwnProperty('table');
         var hasAnd = req.body.query.hasOwnProperty('and');
@@ -323,6 +391,24 @@ app.post('/query', (req, res) => {
     //Build up the query from an empty object
     let query = {};
 
+    if(typeof req.body.table === 'object') {
+        req.body.table.forEach(t => {
+            query.namespace = `${req.body.namespace}.${req.body.t}`;
+            hasWhere ? query.value = req.body.query.where : null;
+            hasAnd ? query['references.value'] = {$all: req.body.query.and} : null;
+            hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
+            hasUser ? query.user = req.body.query.user : null;
+            hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
+        });
+
+        hasLimit ?
+            await Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
+            Element.find(query, (err, docs) => {
+                res.json(docs);
+            });
+
+    }
+
     //Match Req body to query values
     !hasTable ? query.namespace = {
         $regex: req.body.namespace,
@@ -342,11 +428,7 @@ app.post('/query', (req, res) => {
 
 });
 
-async function foo() {
-    await Element.find({});
-}
-
-app.get('*', (req, res) => {
+app.get('*', async (req, res) => {
     res.json({success: true, msg: 'The server is active and running!'});
 });
 

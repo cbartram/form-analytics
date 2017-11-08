@@ -6,17 +6,19 @@ module.exports = {
      * Takes the Rightmost 3 Elements from the
      * Mongoose document array as the most recently used pieces of form data
      * @param data
+     * @param limit int Limit the analysis results being returned
      * @returns {Array}
      */
-    perSubjectRecent(data) {
-        return _.takeRight(data, 3);
+    perSubjectRecent(data, limit = 3) {
+        return _.take(data, limit);
     },
 
     /**
      * Find the most frequently used
      * @param data
+     * @param limit int Limit the analysis results being returned
      */
-    perSubjectFrequency(data) {
+    perSubjectFrequency(data, limit = 3) {
         var frequency = {}, value;
 
         // compute frequencies of each value
@@ -42,10 +44,18 @@ module.exports = {
         function compareFrequency(a, b) {
             return frequency[b] - frequency[a];
         }
-        return uniques.sort(compareFrequency);
+        uniques.sort(compareFrequency);
+        
+        return _.take(uniques, limit);
     },
 
-    decisionTree(data) {
+    /**
+     *
+     * @param data
+     * @param limit int Limit the analysis results being returned
+     * @returns {*}
+     */
+    decisionTree(data, limit = 3) {
         let dt = new DecisionTree(data, "value", ["value", "namespace"]);
 
         let predicted_class = dt.predict({
@@ -58,7 +68,13 @@ module.exports = {
 
     },
 
-    bayesian(data) {
+    /**
+     *
+     * @param data
+     * @param limit int Limit the analysis results being returned
+     * @returns {*}
+     */
+    bayesian(data, limit = 3) {
         //TODO mutate data
         return data;
     },

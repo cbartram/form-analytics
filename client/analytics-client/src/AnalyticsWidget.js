@@ -33,10 +33,20 @@ module.exports = {
 
     /**
      * Opens up the fluent query API and initializes the query to the specified namespace
-     * @param namespace String Namespace to query on
      * @returns {module.exports.query}
      */
-    query(namespace) {
+    query() {
+        queryObj = {};
+        return this;
+    },
+
+    /**
+     * Sets the Database (Namespace) to query on
+     * @param namespace String namespace i.e Pizza.createForm or User.memberSearch
+     * @returns {module.exports.database}
+     */
+    database(namespace) {
+        setQuery();
         queryObj.namespace = namespace;
         return this;
     },
@@ -114,10 +124,7 @@ module.exports = {
      * @param callback function Callback function to retrieve results
      */
     exec(callback) {
-        request
-            .post(`${host}/query`)
-            .send(queryObj)
-            .set('accept', 'json')
+        request.post(`${host}/query`).send(queryObj).set('accept', 'json')
             .end((err, res) => {
                 queryObj = {}; //Clear QueryObj
                 typeof res !== 'undefined' ? callback(res.body) : callback(err);
