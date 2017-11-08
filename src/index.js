@@ -86,6 +86,13 @@ app.post('/form/register', async (req, res) => {
     const namespace = req.body.namespace;
     const elements = req.body.elements;
     const method = req.body.method;
+    let limit;
+
+    if(req.body.hasOwnProperty('limit')) {
+         limit = req.body.limit;
+    } else {
+         limit = MAX_INTEGER;
+    }
 
     Form.find({namespace}, (err, record) => {
         //There was no namespace this is a new form
@@ -96,7 +103,7 @@ app.post('/form/register', async (req, res) => {
 
                 res.json({
                     success:true,
-                    data: []
+                    namespace
                 })
             });
 
@@ -119,16 +126,16 @@ app.post('/form/register', async (req, res) => {
                     //Acts as a switch statement to effectively compute based on the specified method
                     let analyticsMethod = {
                         'per-subject-recent': () => {
-                            return  Analytics.perSubjectRecent(val);
+                            return  Analytics.perSubjectRecent(val, limit);
                         },
                         'per-subject-frequency': () => {
-                            return Analytics.perSubjectFrequency(val);
+                            return Analytics.perSubjectFrequency(val, limit);
                         },
                         'decision-tree': () => {
-                            return Analytics.decisionTree(val);
+                            return Analytics.decisionTree(val, limit);
                         },
                         'bayesian': () => {
-                            return Analytics.bayesian(val);
+                            return Analytics.bayesian(val, limit);
                         }
                     };
                     //Push the results of the analytics to an empty array
@@ -322,6 +329,24 @@ app.post('/query', async (req, res) => {
 
     //Build up the query from an empty object
     let query = {};
+
+    if(typeof req.body.table === 'object') {
+        req.body.table.forEach(t => {
+            query.namespace = `${req.body.namespace}.${req.body.t}`;
+            hasWhere ? query.value = req.body.query.where : null;
+            hasAnd ? query['references.value'] = {$all: req.body.query.and} : null;
+            hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
+            hasUser ? query.user = req.body.query.user : null;
+            hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
+        });
+
+        hasLimit ?
+            await Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
+            Element.find(query, (err, docs) => {
+                res.json(docs);
+            });
+
+    }
 
     //Match Req body to query values
     !hasTable ? query.namespace = {

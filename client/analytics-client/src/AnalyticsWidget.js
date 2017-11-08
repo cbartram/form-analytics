@@ -124,10 +124,7 @@ module.exports = {
      * @param callback function Callback function to retrieve results
      */
     exec(callback) {
-        request
-            .post(`${host}/query`)
-            .send(queryObj)
-            .set('accept', 'json')
+        request.post(`${host}/query`).send(queryObj).set('accept', 'json')
             .end((err, res) => {
                 queryObj = {}; //Clear QueryObj
                 typeof res !== 'undefined' ? callback(res.body) : callback(err);

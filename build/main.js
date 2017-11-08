@@ -94,6 +94,8 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__);
 
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _this = this;
 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
@@ -180,7 +182,7 @@ app.options("/*", function (req, res, next) {
  */
 app.post('/form/register', function () {
     var _ref = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee(req, res) {
-        var namespace, elements, method;
+        var namespace, elements, method, limit;
         return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee$(_context) {
             while (1) {
                 switch (_context.prev = _context.next) {
@@ -189,7 +191,14 @@ app.post('/form/register', function () {
                         namespace = req.body.namespace;
                         elements = req.body.elements;
                         method = req.body.method;
+                        limit = void 0;
 
+
+                        if (req.body.hasOwnProperty('limit')) {
+                            limit = req.body.limit;
+                        } else {
+                            limit = MAX_INTEGER;
+                        }
 
                         Form.find({ namespace: namespace }, function (err, record) {
                             //There was no namespace this is a new form
@@ -200,7 +209,7 @@ app.post('/form/register', function () {
 
                                     res.json({
                                         success: true,
-                                        data: []
+                                        namespace: namespace
                                     });
                                 });
                             } else {
@@ -223,16 +232,16 @@ app.post('/form/register', function () {
                                         //Acts as a switch statement to effectively compute based on the specified method
                                         var analyticsMethod = {
                                             'per-subject-recent': function perSubjectRecent() {
-                                                return Analytics.perSubjectRecent(val);
+                                                return Analytics.perSubjectRecent(val, limit);
                                             },
                                             'per-subject-frequency': function perSubjectFrequency() {
-                                                return Analytics.perSubjectFrequency(val);
+                                                return Analytics.perSubjectFrequency(val, limit);
                                             },
                                             'decision-tree': function decisionTree() {
-                                                return Analytics.decisionTree(val);
+                                                return Analytics.decisionTree(val, limit);
                                             },
                                             'bayesian': function bayesian() {
-                                                return Analytics.bayesian(val);
+                                                return Analytics.bayesian(val, limit);
                                             }
                                         };
                                         //Push the results of the analytics to an empty array
@@ -248,7 +257,7 @@ app.post('/form/register', function () {
                             }
                         });
 
-                    case 4:
+                    case 6:
                     case 'end':
                         return _context.stop();
                 }
@@ -525,8 +534,42 @@ app.post('/query', function () {
                         //Build up the query from an empty object
                         query = {};
 
-                        //Match Req body to query values
+                        if (!(_typeof(req.body.table) === 'object')) {
+                            _context6.next = 12;
+                            break;
+                        }
 
+                        req.body.table.forEach(function (t) {
+                            query.namespace = req.body.namespace + '.' + req.body.t;
+                            hasWhere ? query.value = req.body.query.where : null;
+                            hasAnd ? query['references.value'] = { $all: req.body.query.and } : null;
+                            hasOr ? query['references.value'] = { $in: req.body.query.or } : null;
+                            hasUser ? query.user = req.body.query.user : null;
+                            hasLike ? query.value = { $regex: '.*' + req.body.query.like + '.*', $options: 'i' } : null;
+                        });
+
+                        if (!hasLimit) {
+                            _context6.next = 11;
+                            break;
+                        }
+
+                        _context6.next = 9;
+                        return Element.find(query).sort({ 'value': -1 }).limit(req.body.query.limit).exec(function (err, docs) {
+                            return res.json(docs);
+                        });
+
+                    case 9:
+                        _context6.next = 12;
+                        break;
+
+                    case 11:
+                        Element.find(query, function (err, docs) {
+                            res.json(docs);
+                        });
+
+                    case 12:
+
+                        //Match Req body to query values
                         !hasTable ? query.namespace = {
                             $regex: req.body.namespace,
                             $options: 'i'
@@ -543,7 +586,7 @@ app.post('/query', function () {
                             res.json(docs);
                         });
 
-                    case 11:
+                    case 19:
                     case 'end':
                         return _context6.stop();
                 }
@@ -737,8 +780,8 @@ module.exports = {
      * @param data
      * @returns {Array}
      */
-    perSubjectRecent: function perSubjectRecent(data) {
-        return _.takeRight(data, 3);
+    perSubjectRecent: function perSubjectRecent(data, limit) {
+        return _.take(data, limit);
     },
 
 
@@ -746,7 +789,7 @@ module.exports = {
      * Find the most frequently used
      * @param data
      */
-    perSubjectFrequency: function perSubjectFrequency(data) {
+    perSubjectFrequency: function perSubjectFrequency(data, limit) {
         var frequency = {},
             value;
 
@@ -775,9 +818,11 @@ module.exports = {
         function compareFrequency(a, b) {
             return frequency[b] - frequency[a];
         }
-        return uniques.sort(compareFrequency);
+        uniques.sort(compareFrequency);
+
+        return _.take(uniques, limit);
     },
-    decisionTree: function decisionTree(data) {
+    decisionTree: function decisionTree(data, limit) {
         var dt = new DecisionTree(data, "value", ["value", "namespace"]);
 
         var predicted_class = dt.predict({
@@ -788,7 +833,7 @@ module.exports = {
         var treeModel = dt.toJSON();
         return predicted_class;
     },
-    bayesian: function bayesian(data) {
+    bayesian: function bayesian(data, limit) {
         //TODO mutate data
         return data;
     },

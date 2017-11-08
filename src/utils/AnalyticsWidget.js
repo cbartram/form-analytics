@@ -8,15 +8,15 @@ module.exports = {
      * @param data
      * @returns {Array}
      */
-    perSubjectRecent(data) {
-        return _.takeRight(data, 3);
+    perSubjectRecent(data, limit) {
+        return _.take(data, limit);
     },
 
     /**
      * Find the most frequently used
      * @param data
      */
-    perSubjectFrequency(data) {
+    perSubjectFrequency(data, limit) {
         var frequency = {}, value;
 
         // compute frequencies of each value
@@ -42,10 +42,12 @@ module.exports = {
         function compareFrequency(a, b) {
             return frequency[b] - frequency[a];
         }
-        return uniques.sort(compareFrequency);
+        uniques.sort(compareFrequency);
+        
+        return _.take(uniques, limit);
     },
 
-    decisionTree(data) {
+    decisionTree(data, limit) {
         let dt = new DecisionTree(data, "value", ["value", "namespace"]);
 
         let predicted_class = dt.predict({
@@ -58,7 +60,7 @@ module.exports = {
 
     },
 
-    bayesian(data) {
+    bayesian(data, limit) {
         //TODO mutate data
         return data;
     },
