@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import './App.css';
 import CircularProgress from 'material-ui/CircularProgress';
 import AnalyticsWidget from 'analytics-api-fb/lib/index';
+//import AnalyticsWidget from './AnalyticsAPI';
 
 //Users Unique ID for demo purposes
 const uuid = "462626f95c01fc699f3ab8125506be17";
@@ -17,6 +18,7 @@ class App extends Component {
             crust: 'Thin',
             prediction: [],
             customPrediction: [],
+            customQueryResponse: null,
             error: '',
             success: '',
             loading: true
@@ -32,7 +34,7 @@ class App extends Component {
      * When the component Mounts this function is called
      */
     componentDidMount = () => {
-        AnalyticsWidget.setHost('http://34.237.224.226:3010');
+       // AnalyticsWidget.setHost('http://34.237.224.226:3010');
 
         //Get the Analytics for desired forms when component Mounts
         AnalyticsWidget.registerPickPredictor({
@@ -44,19 +46,18 @@ class App extends Component {
             typeof body !== 'undefined' &&
             //Set state for our prediction results
             this.setState({prediction: body, loading: false});
-            console.log("ComponentDidMount Prediction", body)
         });
 
         //Or Do a custom query for this specific user and get his/her results
-        AnalyticsWidget.query().database("Pizza.createForm").table("Crust Style").exec(res => {
+        AnalyticsWidget.query().database("Pizza.createForm").tables(["Meats", "Crust Style"]).exec(res => {
            //The Query's Dataset 
-           console.log("Custom Query Response", res);
+           this.setState({customQueryResponse: res});
 
             AnalyticsWidget.analyze({
                 data: res,
                 method: 'per-subject-frequency'
             }, analysis => {
-                console.log("Analysis of Custom Query", analysis);
+                this.setState({customPrediction: analysis});
             })
         });
     };
@@ -97,16 +98,13 @@ class App extends Component {
         }
     };
 
+
     render() {
         return (
             <div className="App">
                 <div className="row">
-                    <div className="col-md-3 col-md-offset-5">
+                    <div className="col-md-3 col-md-offset-1">
                         <h2>Form Analytics Demo</h2>
-                    </div>
-                </div>
-                <div className="row">
-                    <div className="col-md-3 col-md-offset-5">
                         <span className="label label-danger" style={{fontSize:15, marginBottom:15}}>{this.state.error}</span>
                         <span className="label label-success" style={{fontSize:15, marginBottom:15}}>{this.state.success}</span>
                         <div className="form-group">
@@ -141,31 +139,58 @@ class App extends Component {
                         <button type="submit" onClick={this.handleClick} className="btn btn-primary">Submit</button>
 
                         {
-                         this.state.loading ? <div>
-                             <h4>Loading Suggestions!</h4>
-                             <CircularProgress size={80} thickness={5} />
-                         </div> :
-                             <div className="row">
-                                 <h4>Suggestions for you!</h4>
-                                 {
-                                     this.state.prediction.map((arr, key) => {
-                                         return (
-                                             <div className="col-md-4" key={key}>
-                                                 <ul className="list-group">
-                                                     {
-                                                         arr.map((prediction, key) => {
-                                                             return <li className="list-group-item" key={key}>{prediction}</li>
-                                                         })
-                                                     }
-                                                 </ul>
-                                             </div>
-                                         )
-                                     })
-                                 }
-                             </div>
+                            this.state.loading ? <div>
+                                <h4>Loading Suggestions!</h4>
+                                <CircularProgress size={80} thickness={5} />
+                            </div> :
+                                <div className="row">
+                                    <h4>Suggestions for you!</h4>
+                                    {
+                                        this.state.prediction.map((arr, key) => {
+                                            return (
+                                                <div className="col-md-4" key={key}>
+                                                    <ul className="list-group">
+                                                        {
+                                                            arr.map((prediction, key) => {
+                                                                return <li className="list-group-item" key={key}>{prediction}</li>
+                                                            })
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            )
+                                        })
+                                    }
+                                </div>
                         }
-
-
+                    </div>
+                    <div className="col-md-8">
+                        <h2>Raw Output</h2>
+                        <div className="row">
+                            <div className="col-md-4">
+                                <h3>ComponentDidMount() Prediction</h3>
+                                <div className="code-wrapper">
+                                    <code>
+                                        { JSON.stringify(this.state.prediction, null, 4) }
+                                    </code>
+                                </div>
+                            </div>
+                            <div className="col-md-4">
+                                <h3>Custom Query Response Data</h3>
+                                <div className="code-wrapper">
+                                    <code className="code-wrapper">
+                                        { JSON.stringify(this.state.customQueryResponse, null, 4) }
+                                    </code>
+                                </div>
+                            </div>
+                            <div className="col-md-4">
+                                <h3>Custom Query Prediction</h3>
+                                <div className="code-wrapper">
+                                    <code>
+                                        { JSON.stringify(this.state.customPrediction, null, 4) }
+                                    </code>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

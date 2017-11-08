@@ -368,6 +368,7 @@ app.post('/query', async (req, res) => {
         var hasUser = req.body.query.hasOwnProperty('user');
         var hasLike = req.body.query.hasOwnProperty('like');
         var hasLimit = req.body.query.hasOwnProperty('limit');
+        var hasTables = req.body.hasOwnProperty('tables');
     } catch (err) {
         //They are missing some properties of the query
         console.log('\u2715 Part of the Query is Undefined');
@@ -388,26 +389,15 @@ app.post('/query', async (req, res) => {
         })
     }
 
+    if(hasTable && hasTables) {
+        res.json({
+            error: true,
+            msg: 'At this time you must either have a "table" clause or a "tables" clause but not both'
+        })
+    }
+
     //Build up the query from an empty object
     let query = {};
-
-    if(typeof req.body.table === 'object') {
-        req.body.table.forEach(t => {
-            query.namespace = `${req.body.namespace}.${req.body.t}`;
-            hasWhere ? query.value = req.body.query.where : null;
-            hasAnd ? query['references.value'] = {$all: req.body.query.and} : null;
-            hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
-            hasUser ? query.user = req.body.query.user : null;
-            hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
-        });
-
-        hasLimit ?
-            await Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
-            Element.find(query, (err, docs) => {
-                res.json(docs);
-            });
-
-    }
 
     //Match Req body to query values
     !hasTable ? query.namespace = {
@@ -419,13 +409,17 @@ app.post('/query', async (req, res) => {
     hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
     hasUser ? query.user = req.body.query.user : null;
     hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
-
+    if(hasTables) {
+        query.namespace = Analytics.toFullNamespace(req.body.namespace, req.body.tables);
+    }
     hasLimit ?
-        Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
         Element.find(query, (err, docs) => {
+            docs = _.take(docs, req.body.limit);
             res.json(docs);
+        }) :
+        Element.find(query, (err, docs) => {
+           res.json(docs);
         });
-
 });
 
 app.get('*', async (req, res) => {

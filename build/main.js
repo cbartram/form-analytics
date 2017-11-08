@@ -94,8 +94,6 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__);
 
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
 var _this = this;
 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
@@ -562,7 +560,7 @@ app.get('/all', function (req, res) {
 
 app.post('/query', function () {
     var _ref6 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee6(req, res) {
-        var hasTable, hasAnd, hasOr, hasWhere, hasUser, hasLike, hasLimit, query;
+        var hasTable, hasAnd, hasOr, hasWhere, hasUser, hasLike, hasLimit, hasTables, query;
         return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee6$(_context6) {
             while (1) {
                 switch (_context6.prev = _context6.next) {
@@ -575,6 +573,7 @@ app.post('/query', function () {
                             hasUser = req.body.query.hasOwnProperty('user');
                             hasLike = req.body.query.hasOwnProperty('like');
                             hasLimit = req.body.query.hasOwnProperty('limit');
+                            hasTables = req.body.hasOwnProperty('tables');
                         } catch (err) {
                             //They are missing some properties of the query
                             console.log('\u2715 Part of the Query is Undefined');
@@ -595,45 +594,18 @@ app.post('/query', function () {
                             });
                         }
 
+                        if (hasTable && hasTables) {
+                            res.json({
+                                error: true,
+                                msg: 'At this time you must either have a "table" clause or a "tables" clause but not both'
+                            });
+                        }
+
                         //Build up the query from an empty object
                         query = {};
 
-                        if (!(_typeof(req.body.table) === 'object')) {
-                            _context6.next = 12;
-                            break;
-                        }
-
-                        req.body.table.forEach(function (t) {
-                            query.namespace = req.body.namespace + '.' + req.body.t;
-                            hasWhere ? query.value = req.body.query.where : null;
-                            hasAnd ? query['references.value'] = { $all: req.body.query.and } : null;
-                            hasOr ? query['references.value'] = { $in: req.body.query.or } : null;
-                            hasUser ? query.user = req.body.query.user : null;
-                            hasLike ? query.value = { $regex: '.*' + req.body.query.like + '.*', $options: 'i' } : null;
-                        });
-
-                        if (!hasLimit) {
-                            _context6.next = 11;
-                            break;
-                        }
-
-                        _context6.next = 9;
-                        return Element.find(query).sort({ 'value': -1 }).limit(req.body.query.limit).exec(function (err, docs) {
-                            return res.json(docs);
-                        });
-
-                    case 9:
-                        _context6.next = 12;
-                        break;
-
-                    case 11:
-                        Element.find(query, function (err, docs) {
-                            res.json(docs);
-                        });
-
-                    case 12:
-
                         //Match Req body to query values
+
                         !hasTable ? query.namespace = {
                             $regex: req.body.namespace,
                             $options: 'i'
@@ -643,14 +615,17 @@ app.post('/query', function () {
                         hasOr ? query['references.value'] = { $in: req.body.query.or } : null;
                         hasUser ? query.user = req.body.query.user : null;
                         hasLike ? query.value = { $regex: '.*' + req.body.query.like + '.*', $options: 'i' } : null;
-
-                        hasLimit ? Element.find(query).sort({ 'value': -1 }).limit(req.body.query.limit).exec(function (err, docs) {
-                            return res.json(docs);
+                        if (hasTables) {
+                            query.namespace = Analytics.toFullNamespace(req.body.namespace, req.body.tables);
+                        }
+                        hasLimit ? Element.find(query, function (err, docs) {
+                            docs = _.take(docs, req.body.limit);
+                            res.json(docs);
                         }) : Element.find(query, function (err, docs) {
                             res.json(docs);
                         });
 
-                    case 19:
+                    case 13:
                     case 'end':
                         return _context6.stop();
                 }
