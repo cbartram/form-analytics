@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import './App.css';
 import CircularProgress from 'material-ui/CircularProgress';
-import AnalyticsWidget from './AnalyticsWidget';
+import AnalyticsWidget from 'analytics-api-fb/lib/index';
 
 //Users Unique ID for demo purposes
 const uuid = "462626f95c01fc699f3ab8125506be17";
@@ -12,9 +12,9 @@ class App extends Component {
         super();
 
         this.state = {
-            meat: '',
-            veggie: '',
-            crust: '',
+            meat: 'Beef',
+            veggie: 'Corn',
+            crust: 'Thin',
             prediction: [],
             customPrediction: [],
             error: '',
@@ -32,6 +32,8 @@ class App extends Component {
      * When the component Mounts this function is called
      */
     componentDidMount = () => {
+        AnalyticsWidget.setHost('http://34.237.224.226:3010');
+
         //Get the Analytics for desired forms when component Mounts
         AnalyticsWidget.registerPickPredictor({
             namespace: "Pizza.createForm",

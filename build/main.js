@@ -751,6 +751,7 @@ function onError(error) {
  */
 function onListening() {
     var addr = server.address();
+    console.log(chalk.green('\u2713 Running version (1.0.0)'));
     console.log(chalk.blue('-------------------------------------------'));
     console.log(chalk.blue('| Analytics Server Listening on Port ' + addr.port + ' |'));
     console.log(chalk.blue('-------------------------------------------'));

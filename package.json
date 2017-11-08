@@ -8,6 +8,7 @@
     "start": "backpack"
   },
   "dependencies": {
+    "analytics-api-fb": "^1.0.0",
     "backpack-core": "^0.4.3",
     "bluebird": "^3.5.1",
     "body-parser": "~1.18.2",
