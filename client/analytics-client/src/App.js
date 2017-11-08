@@ -46,7 +46,7 @@ class App extends Component {
         });
 
         //Or Do a custom query for this specific user and get his/her results
-        AnalyticsWidget.query().database("Pizza.createForm").table("Crust Style").exec(res => {
+        AnalyticsWidget.query().database("Pizza.createForm").exec(res => {
            //The Query's Dataset 
            console.log("Custom Query Response", res);
 

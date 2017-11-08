@@ -90,8 +90,6 @@ app.post('/form/register', async (req, res) => {
 
     if(req.body.hasOwnProperty('limit')) {
          limit = req.body.limit;
-    } else {
-         limit = MAX_INTEGER;
     }
 
     Form.find({namespace}, (err, record) => {
@@ -112,7 +110,6 @@ app.post('/form/register', async (req, res) => {
             //Find the different element & Join them into the Form Namespace
             record[0].set({elements: _.union(elements.filter(e => !record[0].elements.includes(e)), record[0].elements)});
             record[0].save();
-
 
             console.log(chalk.green(`\u2713 Namespace: ${namespace} has been located running analytics...`));
 
@@ -192,13 +189,71 @@ const runAnalytics = async (dataset, method) => {
 };
 
 /**
+ * Sorts JSON by specified object property
+ * @param data Array JSON data to sort
+ * @param prop String Object property name to sort by
+ * @param asc boolean True to sort in ascending order
+ * @returns {Aggregate|Query|*|Array.<T>}
+ */
+const sortResults = (data, prop, asc) => {
+    data = data.sort((a, b) => {
+        if (asc) {
+            return (a[prop] > b[prop]) ? 1 : ((a[prop] < b[prop]) ? -1 : 0);
+        } else {
+            return (b[prop] > a[prop]) ? 1 : ((b[prop] < a[prop]) ? -1 : 0);
+        }
+    });
+
+    return data;
+};
+
+/**
  * Handles Running Analytics on a Custom Set of Data
+ * This method will do 3 things
+ * 1.) Find all unique namespaces in the input data set
+ * 2.) For each unique namespace run the specified analytics method on all of the data in that namespace
+ * 3.) return an array with X amount of nested arrays representing the analysis for each unique namespace
  */
 app.post('/analytics', async (req, res) => {
     const data = req.body.data;
     const method = req.body.method;
 
-    res.json({data: runAnalytics(data, method)});
+    data.forEach(d => {
+       if(d.namespace === 'Pizza.createForm.Veggies') {
+           console.log(d);
+       }
+    });
+
+    let namespaces = []; //Array holding all unique namespace
+    let analysis = []; //Array holding analysis for each unique namespace
+
+    let sortedData = sortResults(data, 'namespace', true);
+
+    for(let i = 0; i < sortedData.length; i++) {
+        if(!_.includes(namespaces, sortedData[i].namespace)) {
+            namespaces.push(sortedData[i].namespace)
+        }
+    }
+
+    //Filter the data and run the analytics
+    namespaces.forEach(namespace => {
+        let temp = [];
+
+        //TODO for some reason filter produces inconsistent results...weird..gonna have to filter manually for now
+       data.forEach(d => {
+          if(d.namespace === namespace) {
+              temp.push(d);
+          }
+       });
+
+       analysis.push(runAnalytics(temp, method));
+    });
+
+    Promise.all(analysis).then(result => {
+        res.json(result);
+    }).catch((err) => {
+        console.error(err);
+    });
 
 });
 

@@ -196,8 +196,6 @@ app.post('/form/register', function () {
 
                         if (req.body.hasOwnProperty('limit')) {
                             limit = req.body.limit;
-                        } else {
-                            limit = MAX_INTEGER;
                         }
 
                         Form.find({ namespace: namespace }, function (err, record) {
@@ -347,11 +345,34 @@ var runAnalytics = function () {
 }();
 
 /**
+ * Sorts JSON by specified object property
+ * @param data Array JSON data to sort
+ * @param prop String Object property name to sort by
+ * @param asc boolean True to sort in ascending order
+ * @returns {Aggregate|Query|*|Array.<T>}
+ */
+var sortResults = function sortResults(data, prop, asc) {
+    data = data.sort(function (a, b) {
+        if (asc) {
+            return a[prop] > b[prop] ? 1 : a[prop] < b[prop] ? -1 : 0;
+        } else {
+            return b[prop] > a[prop] ? 1 : b[prop] < a[prop] ? -1 : 0;
+        }
+    });
+
+    return data;
+};
+
+/**
  * Handles Running Analytics on a Custom Set of Data
+ * This method will do 3 things
+ * 1.) Find all unique namespaces in the input data set
+ * 2.) For each unique namespace run the specified analytics method on all of the data in that namespace
+ * 3.) return an array with X amount of nested arrays representing the analysis for each unique namespace
  */
 app.post('/analytics', function () {
     var _ref4 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee4(req, res) {
-        var data, method;
+        var data, method, namespaces, analysis, sortedData, i;
         return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee4$(_context4) {
             while (1) {
                 switch (_context4.prev = _context4.next) {
@@ -360,9 +381,46 @@ app.post('/analytics', function () {
                         method = req.body.method;
 
 
-                        res.json({ data: runAnalytics(data, method) });
+                        data.forEach(function (d) {
+                            if (d.namespace === 'Pizza.createForm.Veggies') {
+                                console.log(d);
+                            }
+                        });
 
-                    case 3:
+                        namespaces = []; //Array holding all unique namespace
+
+                        analysis = []; //Array holding analysis for each unique namespace
+
+                        sortedData = sortResults(data, 'namespace', true);
+
+
+                        for (i = 0; i < sortedData.length; i++) {
+                            if (!_.includes(namespaces, sortedData[i].namespace)) {
+                                namespaces.push(sortedData[i].namespace);
+                            }
+                        }
+
+                        //Filter the data and run the analytics
+                        namespaces.forEach(function (namespace) {
+                            var temp = [];
+
+                            //TODO for some reason filter produces inconsistent results...weird..gonna have to filter manually for now
+                            data.forEach(function (d) {
+                                if (d.namespace === namespace) {
+                                    temp.push(d);
+                                }
+                            });
+
+                            analysis.push(runAnalytics(temp, method));
+                        });
+
+                        Promise.all(analysis).then(function (result) {
+                            res.json(result);
+                        }).catch(function (err) {
+                            console.error(err);
+                        });
+
+                    case 9:
                     case 'end':
                         return _context4.stop();
                 }
@@ -778,9 +836,12 @@ module.exports = {
      * Takes the Rightmost 3 Elements from the
      * Mongoose document array as the most recently used pieces of form data
      * @param data
+     * @param limit int Limit the analysis results being returned
      * @returns {Array}
      */
-    perSubjectRecent: function perSubjectRecent(data, limit) {
+    perSubjectRecent: function perSubjectRecent(data) {
+        var limit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
+
         return _.take(data, limit);
     },
 
@@ -788,8 +849,11 @@ module.exports = {
     /**
      * Find the most frequently used
      * @param data
+     * @param limit int Limit the analysis results being returned
      */
-    perSubjectFrequency: function perSubjectFrequency(data, limit) {
+    perSubjectFrequency: function perSubjectFrequency(data) {
+        var limit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
+
         var frequency = {},
             value;
 
@@ -822,7 +886,17 @@ module.exports = {
 
         return _.take(uniques, limit);
     },
-    decisionTree: function decisionTree(data, limit) {
+
+
+    /**
+     *
+     * @param data
+     * @param limit int Limit the analysis results being returned
+     * @returns {*}
+     */
+    decisionTree: function decisionTree(data) {
+        var limit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
+
         var dt = new DecisionTree(data, "value", ["value", "namespace"]);
 
         var predicted_class = dt.predict({
@@ -833,7 +907,17 @@ module.exports = {
         var treeModel = dt.toJSON();
         return predicted_class;
     },
-    bayesian: function bayesian(data, limit) {
+
+
+    /**
+     *
+     * @param data
+     * @param limit int Limit the analysis results being returned
+     * @returns {*}
+     */
+    bayesian: function bayesian(data) {
+        var limit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
+
         //TODO mutate data
         return data;
     },
