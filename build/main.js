@@ -307,6 +307,7 @@ app.post('/signup', function () {
  */
 var runAnalytics = function () {
     var _ref3 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee3(dataset, method) {
+        var limit = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 3;
         var analyticsMethod;
         return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee3$(_context3) {
             while (1) {
@@ -314,16 +315,16 @@ var runAnalytics = function () {
                     case 0:
                         analyticsMethod = {
                             'per-subject-recent': function perSubjectRecent() {
-                                return Analytics.perSubjectRecent(dataset);
+                                return Analytics.perSubjectRecent(dataset, limit);
                             },
                             'per-subject-frequency': function perSubjectFrequency() {
-                                return Analytics.perSubjectFrequency(dataset);
+                                return Analytics.perSubjectFrequency(dataset, limit);
                             },
                             'decision-tree': function decisionTree() {
-                                return Analytics.decisionTree(dataset);
+                                return Analytics.decisionTree(dataset, limit);
                             },
                             'bayesian': function bayesian() {
-                                return Analytics.bayesian(dataset);
+                                return Analytics.bayesian(dataset, limit);
                             }
                         };
 
@@ -339,7 +340,7 @@ var runAnalytics = function () {
         }, _callee3, _this);
     }));
 
-    return function runAnalytics(_x5, _x6) {
+    return function runAnalytics(_x6, _x7) {
         return _ref3.apply(this, arguments);
     };
 }();
@@ -372,14 +373,19 @@ var sortResults = function sortResults(data, prop, asc) {
  */
 app.post('/analytics', function () {
     var _ref4 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee4(req, res) {
-        var data, method, namespaces, analysis, sortedData, i;
+        var data, method, limit, namespaces, analysis, sortedData, i;
         return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee4$(_context4) {
             while (1) {
                 switch (_context4.prev = _context4.next) {
                     case 0:
                         data = req.body.data;
                         method = req.body.method;
+                        limit = void 0;
 
+
+                        if (req.body.hasOwnProperty('limit')) {
+                            limit = req.body.limit;
+                        }
 
                         data.forEach(function (d) {
                             if (d.namespace === 'Pizza.createForm.Veggies') {
@@ -411,7 +417,7 @@ app.post('/analytics', function () {
                                 }
                             });
 
-                            analysis.push(runAnalytics(temp, method));
+                            analysis.push(runAnalytics(temp, method, limit));
                         });
 
                         Promise.all(analysis).then(function (result) {
@@ -420,7 +426,7 @@ app.post('/analytics', function () {
                             console.error(err);
                         });
 
-                    case 9:
+                    case 11:
                     case 'end':
                         return _context4.stop();
                 }
@@ -428,7 +434,7 @@ app.post('/analytics', function () {
         }, _callee4, _this);
     }));
 
-    return function (_x7, _x8) {
+    return function (_x8, _x9) {
         return _ref4.apply(this, arguments);
     };
 }());
@@ -530,7 +536,7 @@ app.post('/insert', function () {
         }, _callee5, _this);
     }));
 
-    return function (_x9, _x10) {
+    return function (_x10, _x11) {
         return _ref5.apply(this, arguments);
     };
 }());
@@ -652,7 +658,7 @@ app.post('/query', function () {
         }, _callee6, _this);
     }));
 
-    return function (_x11, _x12) {
+    return function (_x12, _x13) {
         return _ref6.apply(this, arguments);
     };
 }());
@@ -673,7 +679,7 @@ app.get('*', function () {
         }, _callee7, _this);
     }));
 
-    return function (_x13, _x14) {
+    return function (_x14, _x15) {
         return _ref7.apply(this, arguments);
     };
 }());

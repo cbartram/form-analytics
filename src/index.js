@@ -167,20 +167,20 @@ app.post('/signup', async (req, res) => {
 
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-const runAnalytics = async (dataset, method) => {
+const runAnalytics = async (dataset, method, limit = 3) => {
 
     let analyticsMethod = {
         'per-subject-recent': () => {
-            return  Analytics.perSubjectRecent(dataset);
+            return  Analytics.perSubjectRecent(dataset, limit);
         },
         'per-subject-frequency': () => {
-            return Analytics.perSubjectFrequency(dataset);
+            return Analytics.perSubjectFrequency(dataset, limit);
         },
         'decision-tree': () => {
-            return Analytics.decisionTree(dataset);
+            return Analytics.decisionTree(dataset, limit);
         },
         'bayesian': () => {
-            return Analytics.bayesian(dataset);
+            return Analytics.bayesian(dataset, limit);
         }
     };
 
@@ -217,6 +217,12 @@ const sortResults = (data, prop, asc) => {
 app.post('/analytics', async (req, res) => {
     const data = req.body.data;
     const method = req.body.method;
+    let limit;
+
+    if(req.body.hasOwnProperty('limit')) {
+        limit = req.body.limit;
+    }
+
 
     data.forEach(d => {
        if(d.namespace === 'Pizza.createForm.Veggies') {
@@ -246,7 +252,7 @@ app.post('/analytics', async (req, res) => {
           }
        });
 
-       analysis.push(runAnalytics(temp, method));
+       analysis.push(runAnalytics(temp, method, limit));
     });
 
     Promise.all(analysis).then(result => {

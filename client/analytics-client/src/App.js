@@ -46,7 +46,7 @@ class App extends Component {
         });
 
         //Or Do a custom query for this specific user and get his/her results
-        AnalyticsWidget.query().database("Pizza.createForm").exec(res => {
+        AnalyticsWidget.query().database("Pizza.createForm").table("Crust Style").exec(res => {
            //The Query's Dataset 
            console.log("Custom Query Response", res);
 
@@ -86,7 +86,7 @@ class App extends Component {
                     method: 'per-subject-frequency'
                 }, prediction => {
                     console.log(prediction);
-                  // this.setState({prediction});
+                   this.setState({prediction});
                 });
             });
 
