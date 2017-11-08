@@ -385,12 +385,6 @@ app.post('/analytics', function () {
                             limit = req.body.limit;
                         }
 
-                        data.forEach(function (d) {
-                            if (d.namespace === 'Pizza.createForm.Veggies') {
-                                console.log(d);
-                            }
-                        });
-
                         namespaces = []; //Array holding all unique namespace
 
                         analysis = []; //Array holding analysis for each unique namespace
@@ -424,7 +418,7 @@ app.post('/analytics', function () {
                             console.error(err);
                         });
 
-                    case 11:
+                    case 10:
                     case 'end':
                         return _context4.stop();
                 }
@@ -441,103 +435,82 @@ app.post('/analytics', function () {
  * Handles Inserting data into Mongo but does not run analytics
  * this is how the classifier is updated when the Submit button is pressed
  */
-app.post('/insert', function () {
-    var _ref5 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee5(req, res) {
-        var formNamespace, elementNamespaces, elementValues, user;
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee5$(_context5) {
-            while (1) {
-                switch (_context5.prev = _context5.next) {
-                    case 0:
-                        formNamespace = req.body.namespace; //Pizza.createForm
+app.post('/insert', function (req, res) {
+    var formNamespace = req.body.namespace; //Pizza.createForm
+    var elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
+    var elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
+    var user = req.body.user; //UserID
 
-                        elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
+    if (typeof user === 'undefined') {
+        user = null;
+    }
 
-                        elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
+    if (elementNamespaces.length !== elementValues.length) {
+        console.log(chalk.hex('#e81a00')('\u2715 ElementOutOfBoundsException Error: More Elements than Values to fill.'));
+        res.json({ success: false, msg: 'There were more namespaces than values to fill or vice versa....Please ensure both arrays are of the same length.' });
+    } else {
 
-                        user = req.body.user; //UserID
+        //Ensure the elements exist in the Form Namespace
+        Form.find({ namespace: formNamespace }, function (err, record) {
+            if (typeof record !== "undefined" && record.length > 0) {
+                if (!elementNamespaces.every(function (elem) {
+                    return record[0].elements.indexOf(elem) > -1;
+                })) {
 
-                        if (typeof user === 'undefined') {
-                            user = null;
-                        }
+                    //An elementNamespace is not already defined in the Form model
+                    console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'));
+                    res.json({
+                        success: false,
+                        msg: 'UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'
+                    });
+                } else {
+                    var records = [];
 
-                        if (elementNamespaces.length !== elementValues.length) {
-                            console.log(chalk.hex('#e81a00')('\u2715 ElementOutOfBoundsException Error: More Elements than Values to fill.'));
-                            res.json({ success: false, msg: 'There were more namespaces than values to fill or vice versa....Please ensure both arrays are of the same length.' });
-                        } else {
+                    //Add a new value for each namespace
+                    elementNamespaces.map(function (value, key) {
+                        //Remove the Item being stored from referencing itself
+                        var references = elementValues.filter(function (e) {
+                            return e !== elementValues[key];
+                        });
+                        var namespaces = elementNamespaces.filter(function (e) {
+                            return e !== elementNamespaces[key];
+                        });
 
-                            //Ensure the elements exist in the Form Namespace
-                            Form.find({ namespace: formNamespace }, function (err, record) {
-                                if (typeof record !== "undefined" && record.length > 0) {
-                                    if (!elementNamespaces.every(function (elem) {
-                                        return record[0].elements.indexOf(elem) > -1;
-                                    })) {
+                        //Map over each reference and convert it into an object
+                        var finalRef = references.map(function (ele, key) {
+                            return {
+                                namespace: formNamespace + '.' + namespaces[key],
+                                value: ele
+                            };
+                        });
 
-                                        //An elementNamespace is not already defined in the Form model
-                                        console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'));
-                                        res.json({
-                                            success: false,
-                                            msg: 'UndefinedNamespaceException: One of the element namespaces has not yet been defined in the Form Model'
-                                        });
-                                    } else {
-                                        var records = [];
+                        records.push(new Element({
+                            namespace: formNamespace + '.' + value,
+                            value: elementValues[key],
+                            user: user,
+                            references: finalRef,
+                            updatedAt: new Date(),
+                            createdAt: new Date()
+                        }));
+                    });
 
-                                        //Add a new value for each namespace
-                                        elementNamespaces.map(function (value, key) {
-                                            //Remove the Item being stored from referencing itself
-                                            var references = elementValues.filter(function (e) {
-                                                return e !== elementValues[key];
-                                            });
-                                            var namespaces = elementNamespaces.filter(function (e) {
-                                                return e !== elementNamespaces[key];
-                                            });
-
-                                            //Map over each reference and convert it into an object
-                                            var finalRef = references.map(function (ele, key) {
-                                                return {
-                                                    namespace: formNamespace + '.' + namespaces[key],
-                                                    value: ele
-                                                };
-                                            });
-
-                                            records.push(new Element({
-                                                namespace: formNamespace + '.' + value,
-                                                value: elementValues[key],
-                                                user: user,
-                                                references: finalRef,
-                                                updatedAt: new Date(),
-                                                createdAt: new Date()
-                                            }));
-                                        });
-
-                                        //Insert Bulk operation
-                                        Element.collection.insert(records, function (err, data) {
-                                            if (err) res.json({ success: false, err: err });
-                                            console.log(chalk.green('\u2713 Element data saved!'));
-                                            res.json({ success: true });
-                                        });
-                                    }
-                                } else {
-                                    console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'));
-                                    res.json({
-                                        success: false,
-                                        msg: 'UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'
-                                    });
-                                }
-                            });
-                        }
-
-                    case 6:
-                    case 'end':
-                        return _context5.stop();
+                    //Insert Bulk operation
+                    Element.collection.insert(records, function (err, data) {
+                        if (err) res.json({ success: false, err: err });
+                        console.log(chalk.green('\u2713 Element data saved!'));
+                        res.json({ success: true });
+                    });
                 }
+            } else {
+                console.log(chalk.hex('#e81a00')('\u2715 UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'));
+                res.json({
+                    success: false,
+                    msg: 'UndefinedNamespaceException: One of the Form namespaces has not yet been defined in the Form Model use /form/register to define a new namespace'
+                });
             }
-        }, _callee5, _this);
-    }));
-
-    return function (_x10, _x11) {
-        return _ref5.apply(this, arguments);
-    };
-}());
+        });
+    }
+});
 
 /**
  * Deletes all records in a Collection
@@ -559,11 +532,11 @@ app.get('/all', function (req, res) {
 });
 
 app.post('/query', function () {
-    var _ref6 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee6(req, res) {
+    var _ref5 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee5(req, res) {
         var hasTable, hasAnd, hasOr, hasWhere, hasUser, hasLike, hasLimit, hasTables, query;
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee6$(_context6) {
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee5$(_context5) {
             while (1) {
-                switch (_context6.prev = _context6.next) {
+                switch (_context5.prev = _context5.next) {
                     case 0:
                         try {
                             hasTable = req.body.hasOwnProperty('table');
@@ -627,6 +600,27 @@ app.post('/query', function () {
 
                     case 13:
                     case 'end':
+                        return _context5.stop();
+                }
+            }
+        }, _callee5, _this);
+    }));
+
+    return function (_x10, _x11) {
+        return _ref5.apply(this, arguments);
+    };
+}());
+
+app.get('*', function () {
+    var _ref6 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee6(req, res) {
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee6$(_context6) {
+            while (1) {
+                switch (_context6.prev = _context6.next) {
+                    case 0:
+                        res.json({ success: true, msg: 'The server is active and running!' });
+
+                    case 1:
+                    case 'end':
                         return _context6.stop();
                 }
             }
@@ -635,27 +629,6 @@ app.post('/query', function () {
 
     return function (_x12, _x13) {
         return _ref6.apply(this, arguments);
-    };
-}());
-
-app.get('*', function () {
-    var _ref7 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee7(req, res) {
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee7$(_context7) {
-            while (1) {
-                switch (_context7.prev = _context7.next) {
-                    case 0:
-                        res.json({ success: true, msg: 'The server is active and running!' });
-
-                    case 1:
-                    case 'end':
-                        return _context7.stop();
-                }
-            }
-        }, _callee7, _this);
-    }));
-
-    return function (_x14, _x15) {
-        return _ref7.apply(this, arguments);
     };
 }());
 
@@ -726,7 +699,7 @@ function onError(error) {
  */
 function onListening() {
     var addr = server.address();
-    console.log(chalk.green('\u2713 Running version (1.0.0)'));
+    console.log(chalk.green('\u2713 Running version (1.0.1)'));
     console.log(chalk.blue('-------------------------------------------'));
     console.log(chalk.blue('| Analytics Server Listening on Port ' + addr.port + ' |'));
     console.log(chalk.blue('-------------------------------------------'));
@@ -824,7 +797,11 @@ module.exports = {
     perSubjectRecent: function perSubjectRecent(data) {
         var limit = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 3;
 
-        return _.take(data, limit);
+        var arr = _.take(data, limit).map(function (i) {
+            return i.value;
+        });
+
+        return arr.filter(Boolean);
     },
 
 

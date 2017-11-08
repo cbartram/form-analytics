@@ -223,13 +223,6 @@ app.post('/analytics', async (req, res) => {
         limit = req.body.limit;
     }
 
-
-    data.forEach(d => {
-       if(d.namespace === 'Pizza.createForm.Veggies') {
-           console.log(d);
-       }
-    });
-
     let namespaces = []; //Array holding all unique namespace
     let analysis = []; //Array holding analysis for each unique namespace
 
@@ -260,15 +253,13 @@ app.post('/analytics', async (req, res) => {
     }).catch((err) => {
         console.error(err);
     });
-
 });
-
 
 /**
  * Handles Inserting data into Mongo but does not run analytics
  * this is how the classifier is updated when the Submit button is pressed
  */
-app.post('/insert', async  (req, res) => {
+app.post('/insert', (req, res) => {
     const formNamespace = req.body.namespace; //Pizza.createForm
     const elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
     const elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
@@ -497,7 +488,7 @@ function onError(error) {
  */
 function onListening() {
     let addr = server.address();
-    console.log(chalk.green('\u2713 Running version (1.0.0)'));
+    console.log(chalk.green('\u2713 Running version (1.0.1)'));
     console.log(chalk.blue('-------------------------------------------'));
     console.log(chalk.blue(`| Analytics Server Listening on Port ${addr.port} |`));
     console.log(chalk.blue('-------------------------------------------'));

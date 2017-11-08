@@ -10,7 +10,11 @@ module.exports = {
      * @returns {Array}
      */
     perSubjectRecent(data, limit = 3) {
-        return _.take(data, limit);
+        let arr = _.take(data, limit).map(i => {
+            return i.value;
+        });
+
+        return arr.filter(Boolean);
     },
 
     /**

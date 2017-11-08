@@ -34,14 +34,14 @@ class App extends Component {
      * When the component Mounts this function is called
      */
     componentDidMount = () => {
-       // AnalyticsWidget.setHost('http://34.237.224.226:3010');
+         //AnalyticsWidget.setHost('http://34.237.224.226:3010');
 
         //Get the Analytics for desired forms when component Mounts
         AnalyticsWidget.registerPickPredictor({
             namespace: "Pizza.createForm",
             elements: ["Meats", "Veggies", "Crust Style"],
-            method: "per-subject-frequency",
-            limit: 3
+            method: "per-subject-recent",
+            limit: 5
         }, (body) => {
             typeof body !== 'undefined' &&
             //Set state for our prediction results
@@ -50,12 +50,13 @@ class App extends Component {
 
         //Or Do a custom query for this specific user and get his/her results
         AnalyticsWidget.query().database("Pizza.createForm").tables(["Meats", "Crust Style"]).exec(res => {
-           //The Query's Dataset 
+           //The Query's Dataset
            this.setState({customQueryResponse: res});
 
+            //Running Analytics on the Custom Dataset
             AnalyticsWidget.analyze({
                 data: res,
-                method: 'per-subject-frequency'
+                method: 'per-subject-recent'
             }, analysis => {
                 this.setState({customPrediction: analysis});
             })
@@ -69,33 +70,24 @@ class App extends Component {
     handleClick = () => {
         const {meat, veggie, crust} = this.state;
 
-        if(meat === '' || veggie === '' || crust === '') {
-            this.setState({error: 'You need to select values first!', success: ''});
-        } else {
+        //Insert data
+        AnalyticsWidget.insert({
+            namespace: ["Pizza.createForm"],
+            elements: ["Meats", "Veggies", "Crust Style"],
+            values: [meat, veggie, crust],
+            user: uuid
+        });
 
-            //Insert data
-            AnalyticsWidget.insert({
-                namespace: ["Pizza.createForm"],
-                elements: ["Meats", "Veggies", "Crust Style"],
-                values: [meat, veggie, crust],
-                user: uuid
+        //Re-run Analytics
+        AnalyticsWidget.query().database('Pizza.createForm').onlyUser(uuid).exec(data => {
+            //We now have a defined data set to run the analytics on
+            AnalyticsWidget.analyze({
+                data,
+                method: 'per-subject-recent'
+            }, prediction => {
+               this.setState({prediction, success: 'Successfully inserted data and re-ran analytics', error: ''});
             });
-
-            //Re-run Analytics
-            AnalyticsWidget.query().database('Pizza.createForm').onlyUser(uuid).exec(data => {
-               //We now have a defined data set to run the analytics on
-                AnalyticsWidget.analyze({
-                    data,
-                    method: 'per-subject-frequency'
-                }, prediction => {
-                    console.log(prediction);
-                   this.setState({prediction});
-                });
-            });
-
-
-            this.setState({success: 'Successfully inserted data and re-ran analytics', error: ''})
-        }
+        });
     };
 
 
@@ -109,7 +101,7 @@ class App extends Component {
                         <span className="label label-success" style={{fontSize:15, marginBottom:15}}>{this.state.success}</span>
                         <div className="form-group">
                             <label>Meats</label>
-                            <select onChange={this.handleMeatChange} className="form-control" name="Meat">
+                            <select onChange={this.handleMeatChange} className="form-control">
                                 <option value="Beef">Beef</option>
                                 <option value="Ham">Ham</option>
                                 <option value="Turkey">Turkey</option>
@@ -119,7 +111,7 @@ class App extends Component {
                         </div>
                         <div className="form-group">
                             <label>Veggies</label>
-                            <select onChange={this.handleVeggieChange} className="form-control" name="Veggies">
+                            <select onChange={this.handleVeggieChange} className="form-control">
                                 <option value="Corn">Corn</option>
                                 <option value="Peppers">Peppers</option>
                                 <option value="Onions">Onions</option>
@@ -129,7 +121,7 @@ class App extends Component {
                         </div>
                         <div className="form-group">
                             <label>Crust Style</label>
-                            <select onChange={this.handleCrustChange} className="form-control" name="Crust Style">
+                            <select onChange={this.handleCrustChange} className="form-control">
                                 <option value="Thin">Thin</option>
                                 <option value="Thick">Thick</option>
                                 <option value="Cheese">Cheese</option>
@@ -166,7 +158,7 @@ class App extends Component {
                     <div className="col-md-8">
                         <h2>Raw Output</h2>
                         <div className="row">
-                            <div className="col-md-4">
+                            <div className="col-md-6">
                                 <h3>ComponentDidMount() Prediction</h3>
                                 <div className="code-wrapper">
                                     <code>
@@ -174,19 +166,21 @@ class App extends Component {
                                     </code>
                                 </div>
                             </div>
-                            <div className="col-md-4">
-                                <h3>Custom Query Response Data</h3>
-                                <div className="code-wrapper">
-                                    <code className="code-wrapper">
-                                        { JSON.stringify(this.state.customQueryResponse, null, 4) }
-                                    </code>
-                                </div>
-                            </div>
-                            <div className="col-md-4">
+                            <div className="col-md-6">
                                 <h3>Custom Query Prediction</h3>
                                 <div className="code-wrapper">
                                     <code>
                                         { JSON.stringify(this.state.customPrediction, null, 4) }
+                                    </code>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="row">
+                            <div className="col-md-12">
+                                <h3>Custom Query Response Data</h3>
+                                <div className="code-wrapper">
+                                    <code className="code-wrapper">
+                                        { JSON.stringify(this.state.customQueryResponse, null, "\t") }
                                     </code>
                                 </div>
                             </div>
