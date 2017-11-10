@@ -1,5 +1,6 @@
 const _ = require('lodash');
 const DecisionTree = require('decision-tree');
+const mind = require('node-mind');
 
 module.exports = {
     /**

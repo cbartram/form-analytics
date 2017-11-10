@@ -62,7 +62,7 @@ module.exports =
 /******/ 	__webpack_require__.p = "/";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 2);
+/******/ 	return __webpack_require__(__webpack_require__.s = 3);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -75,22 +75,28 @@ module.exports = require("mongoose");
 /* 1 */
 /***/ (function(module, exports) {
 
-module.exports = require("lodash");
+module.exports = require("node-mind");
 
 /***/ }),
 /* 2 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, exports) {
 
-module.exports = __webpack_require__(3);
-
+module.exports = require("lodash");
 
 /***/ }),
 /* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+module.exports = __webpack_require__(4);
+
+
+/***/ }),
+/* 4 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* WEBPACK VAR INJECTION */(function(__dirname) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__ = __webpack_require__(4);
+/* WEBPACK VAR INJECTION */(function(__dirname) {/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__ = __webpack_require__(5);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator__);
 
 
@@ -98,26 +104,27 @@ var _this = this;
 
 function _asyncToGenerator(fn) { return function () { var gen = fn.apply(this, arguments); return new Promise(function (resolve, reject) { function step(key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { return Promise.resolve(value).then(function (value) { step("next", value); }, function (err) { step("throw", err); }); } } return step("next"); }); }; }
 
-var debug = __webpack_require__(6)('form-analytics:server');
-var http = __webpack_require__(7);
-var express = __webpack_require__(8);
-var path = __webpack_require__(9);
-var logger = __webpack_require__(10);
-var jade = __webpack_require__(11);
-var cookieParser = __webpack_require__(12);
-var bluebird = __webpack_require__(13);
-var bodyParser = __webpack_require__(14);
+var debug = __webpack_require__(7)('form-analytics:server');
+var http = __webpack_require__(8);
+var express = __webpack_require__(9);
+var path = __webpack_require__(10);
+var logger = __webpack_require__(11);
+var jade = __webpack_require__(12);
+var cookieParser = __webpack_require__(13);
+var bluebird = __webpack_require__(14);
+var bodyParser = __webpack_require__(15);
 var mongoose = __webpack_require__(0);
-var chalk = __webpack_require__(15);
-var _ = __webpack_require__(1);
-var Analytics = __webpack_require__(16);
+var chalk = __webpack_require__(16);
+var Mind = __webpack_require__(1);
+var _ = __webpack_require__(2);
+var Analytics = __webpack_require__(17);
 
 var app = express();
 
 //Models
-var Form = __webpack_require__(18);
-var Element = __webpack_require__(19);
-var User = __webpack_require__(20);
+var Form = __webpack_require__(19);
+var Element = __webpack_require__(20);
+var User = __webpack_require__(21);
 
 bluebird.promisifyAll(mongoose);
 mongoose.Promise = global.Promise;
@@ -494,6 +501,28 @@ app.post('/insert', function (req, res) {
                         }));
                     });
 
+                    //Find all inserts for this user
+                    Element.find({
+                        user: user
+                    }, function (err, docs) {
+
+                        //Only take 10 docs
+                        docs = _.takeRight(docs, 10);
+
+                        console.log(docs);
+
+                        var data = docs.map(function (doc) {
+                            return {
+                                input: normalizeArray(doc.references),
+                                output: normalize(doc)
+                            };
+                        });
+
+                        var mind = new Mind().learn(data);
+
+                        console.log(mind.predict(normalize(records[0])));
+                    });
+
                     //Insert Bulk operation
                     Element.collection.insert(records, function (err, data) {
                         if (err) res.json({ success: false, err: err });
@@ -511,6 +540,52 @@ app.post('/insert', function (req, res) {
         });
     }
 });
+
+/**
+ * Normalizes an output that is not an Array but a single value
+ * @param obj Element document from MongoDB
+ * @returns {[number,number,number,number,number,number,number,number,number,number,number,number,number,number]}
+ */
+var normalize = function normalize(obj) {
+    var keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+    var map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; //Represents beef => 0, Ham => 0 Anchovies => 1 Bacon => 1
+
+    var index = _.findIndex(keys, function (o) {
+        return o === obj.value;
+    });
+
+    if (index !== null && index !== -1) {
+        //This is also going to be the same index in the map array which needs to be updated to be 1
+        map[index] = 1;
+    }
+
+    return map;
+};
+
+/**
+ * Normalizes a set of Form References into a binary classification
+ * to be trained into a neural network
+ * @param references
+ * @returns {*}
+ */
+var normalizeArray = function normalizeArray(references) {
+    var keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+    var map = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; //Represents beef => 0, Ham => 0 Anchovies => 1 Bacon => 1
+
+    references.map(function (reference) {
+        //Find the index in the keys array where the value of the key is equal to the value of the reference
+        var index = _.findIndex(keys, function (o) {
+            return o === reference.value;
+        });
+
+        if (index !== null && index !== -1) {
+            //This is also going to be the same index in the map array which needs to be updated to be 1
+            map[index] = 1;
+        }
+    });
+
+    return map;
+};
 
 /**
  * Deletes all records in a Collection
@@ -707,84 +782,85 @@ function onListening() {
 /* WEBPACK VAR INJECTION */}.call(__webpack_exports__, "src"))
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(5);
+module.exports = __webpack_require__(6);
 
-
-/***/ }),
-/* 5 */
-/***/ (function(module, exports) {
-
-module.exports = require("regenerator-runtime");
 
 /***/ }),
 /* 6 */
 /***/ (function(module, exports) {
 
-module.exports = require("debug");
+module.exports = require("regenerator-runtime");
 
 /***/ }),
 /* 7 */
 /***/ (function(module, exports) {
 
-module.exports = require("http");
+module.exports = require("debug");
 
 /***/ }),
 /* 8 */
 /***/ (function(module, exports) {
 
-module.exports = require("express");
+module.exports = require("http");
 
 /***/ }),
 /* 9 */
 /***/ (function(module, exports) {
 
-module.exports = require("path");
+module.exports = require("express");
 
 /***/ }),
 /* 10 */
 /***/ (function(module, exports) {
 
-module.exports = require("morgan");
+module.exports = require("path");
 
 /***/ }),
 /* 11 */
 /***/ (function(module, exports) {
 
-module.exports = require("jade");
+module.exports = require("morgan");
 
 /***/ }),
 /* 12 */
 /***/ (function(module, exports) {
 
-module.exports = require("cookie-parser");
+module.exports = require("jade");
 
 /***/ }),
 /* 13 */
 /***/ (function(module, exports) {
 
-module.exports = require("bluebird");
+module.exports = require("cookie-parser");
 
 /***/ }),
 /* 14 */
 /***/ (function(module, exports) {
 
-module.exports = require("body-parser");
+module.exports = require("bluebird");
 
 /***/ }),
 /* 15 */
 /***/ (function(module, exports) {
 
-module.exports = require("chalk");
+module.exports = require("body-parser");
 
 /***/ }),
 /* 16 */
+/***/ (function(module, exports) {
+
+module.exports = require("chalk");
+
+/***/ }),
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var _ = __webpack_require__(1);
-var DecisionTree = __webpack_require__(17);
+var _ = __webpack_require__(2);
+var DecisionTree = __webpack_require__(18);
+var mind = __webpack_require__(1);
 
 module.exports = {
     /**
@@ -896,13 +972,13 @@ module.exports = {
 };
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports) {
 
 module.exports = require("decision-tree");
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**
@@ -925,7 +1001,7 @@ var Form = mongoose.Schema({
 module.exports = mongoose.model('Form', Form);
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**
@@ -951,7 +1027,7 @@ var Element = mongoose.Schema({
 module.exports = mongoose.model('Element', Element);
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /**

@@ -9,6 +9,7 @@ const bluebird = require('bluebird');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const chalk = require('chalk');
+const Mind = require('node-mind');
 const _ = require('lodash');
 const Analytics = require('./utils/AnalyticsWidget.js');
 
@@ -21,6 +22,7 @@ const User = require('../models/User');
 
 bluebird.promisifyAll(mongoose);
 mongoose.Promise = global.Promise;
+
 
 //Connect to Database
 mongoose.connect('mongodb://mongoAdmin:Innov8@34.226.210.46:27017/admin', {
@@ -313,6 +315,28 @@ app.post('/insert', (req, res) => {
                         }));
                     });
 
+                    //Find all inserts for this user
+                    Element.find({
+                        user
+                    }, (err, docs) => {
+
+                        //Only take 10 docs
+                        docs = _.takeRight(docs, 10);
+
+                        console.log(docs);
+
+                        let data = docs.map(doc => {
+                            return {
+                                input: normalizeArray(doc.references),
+                                output: normalize(doc)
+                            }
+                        });
+
+                        const mind = new Mind().learn(data);
+
+                        console.log(mind.predict(normalize(records[0])));
+                    });
+
                     //Insert Bulk operation
                     Element.collection.insert(records, (err, data) => {
                         if(err) res.json({success: false, err});
@@ -330,6 +354,52 @@ app.post('/insert', (req, res) => {
         });
     }
 });
+
+
+/**
+ * Normalizes an output that is not an Array but a single value
+ * @param obj Element document from MongoDB
+ * @returns {[number,number,number,number,number,number,number,number,number,number,number,number,number,number]}
+ */
+const normalize = (obj) => {
+    let keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+    let map = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]; //Represents beef => 0, Ham => 0 Anchovies => 1 Bacon => 1
+
+    let index = _.findIndex(keys, o => o === obj.value);
+
+    if(index !== null && index !== -1) {
+        //This is also going to be the same index in the map array which needs to be updated to be 1
+        map[index] = 1;
+    }
+
+    return map;
+};
+
+/**
+ * Normalizes a set of Form References into a binary classification
+ * to be trained into a neural network
+ * @param references
+ * @returns {*}
+ */
+const normalizeArray = (references) => {
+    let keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+    let map = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]; //Represents beef => 0, Ham => 0 Anchovies => 1 Bacon => 1
+
+    references.map(reference => {
+        //Find the index in the keys array where the value of the key is equal to the value of the reference
+       let index = _.findIndex(keys, o => {
+            return o === reference.value;
+        });
+
+       if(index !== null && index !== -1) {
+           //This is also going to be the same index in the map array which needs to be updated to be 1
+           map[index] = 1;
+       }
+    });
+
+    return map;
+};
+
 
 /**
  * Deletes all records in a Collection
