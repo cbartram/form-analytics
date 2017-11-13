@@ -1,6 +1,9 @@
 import React, { Component } from 'react';
 import './App.css';
 import CircularProgress from 'material-ui/CircularProgress';
+import Avatar from 'material-ui/Avatar';
+import Chip from 'material-ui/Chip';
+import FontIcon from 'material-ui/FontIcon';
 import AnalyticsWidget from 'analytics-api-fb/lib/index';
 //import AnalyticsWidget from './AnalyticsAPI';
 
@@ -17,7 +20,8 @@ class App extends Component {
             veggie: 'Corn',
             crust: 'Thin',
             prediction: [],
-            customPrediction: [],
+            customPrediction: [], //Output of the custom prediction
+            neuralPrediction: [], //Output of the Neural Network
             customQueryResponse: null,
             error: '',
             success: '',
@@ -40,7 +44,7 @@ class App extends Component {
         AnalyticsWidget.registerPickPredictor({
             namespace: "Pizza.createForm",
             elements: ["Meats", "Veggies", "Crust Style"],
-            method: "per-subject-recent",
+            method: "per-subject-frequency",
             limit: 5
         }, (body) => {
             typeof body !== 'undefined' &&
@@ -56,7 +60,7 @@ class App extends Component {
             //Running Analytics on the Custom Dataset
             AnalyticsWidget.analyze({
                 data: res,
-                method: 'per-subject-recent'
+                method: 'per-subject-frequency'
             }, analysis => {
                 this.setState({customPrediction: analysis});
             })
@@ -80,16 +84,23 @@ class App extends Component {
 
         //Re-run Analytics
         AnalyticsWidget.query().database('Pizza.createForm').onlyUser(uuid).exec(data => {
-            //We now have a defined data set to run the analytics on
-            AnalyticsWidget.analyze({
+
+            const config = {
                 data,
-                method: 'per-subject-recent'
-            }, prediction => {
-               this.setState({prediction, success: 'Successfully inserted data and re-ran analytics', error: ''});
+                method: 'neural-network'
+            };
+
+            //We now have a defined data set to run the analytics on
+            AnalyticsWidget.analyze(config, prediction => {
+                //If the method type if neural network we want to display these results separately
+                if(config.method === 'neural-network') {
+                    this.setState({neuralPrediction: prediction[0], success: 'Successfully inserted data and re-ran analytics', error: ''})
+                } else {
+                    this.setState({prediction, success: 'Successfully inserted data and re-ran analytics', error: ''});
+                }
             });
         });
     };
-
 
     render() {
         return (
@@ -139,6 +150,8 @@ class App extends Component {
                                     <h4>Suggestions for you!</h4>
                                     {
                                         this.state.prediction.map((arr, key) => {
+
+                                            //If the method specified was neural-network the predictions come back as nested arrays
                                             return (
                                                 <div className="col-md-4" key={key}>
                                                     <ul className="list-group">
@@ -154,6 +167,19 @@ class App extends Component {
                                     }
                                 </div>
                         }
+                        <div className="row">
+                            <div className="col-md-12">
+                                <h3>Neural Network Predictions</h3>
+                                {
+                                    this.state.neuralPrediction.length > 0 && this.state.neuralPrediction.map(item => {
+                                      return  <Chip style={{margin:4}} backgroundColor={'#58baff'} key={item.name}>
+                                                    <Avatar color={'#58baff'} backgroundColor={'#5421FF'} icon={<FontIcon className="fa fa-star"/>} />
+                                                    {`${item.name} - ${Math.round(item.confidence * 100)}%`}
+                                              </Chip>
+                                    })
+                                }
+                            </div>
+                        </div>
                     </div>
                     <div className="col-md-8">
                         <h2>Raw Output</h2>

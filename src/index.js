@@ -14,6 +14,7 @@ const _ = require('lodash');
 const Analytics = require('./utils/AnalyticsWidget.js');
 
 const app = express();
+const VERSION = "1.0.2";
 
 //Models
 const Form = require('../models/Form');
@@ -78,12 +79,18 @@ app.options("/*", function(req, res, next){
     res.send(200);
 });
 
+/**
+ * Gets the currently Running Version
+ */
+app.get('/version', (req, res) => {
+    res.json({version: VERSION});
+});
 
 /**
  * Handles registering a new Namespace (for a new form)
  * or Running Analytics on an existing namespace
  */
-app.post('/form/register', async (req, res) => {
+app.post('/form/register',  (req, res) => {
     //Get the namespace & Required variables i.e. ApplicationName.formName
     const namespace = req.body.namespace;
     const elements = req.body.elements;
@@ -135,6 +142,9 @@ app.post('/form/register', async (req, res) => {
                         },
                         'bayesian': () => {
                             return Analytics.bayesian(val, limit);
+                        },
+                        'neural-network': () => {
+                            return predict(elements, element);
                         }
                     };
                     //Push the results of the analytics to an empty array
@@ -154,7 +164,7 @@ app.post('/form/register', async (req, res) => {
 /**
  * Handles a basic user signup
  */
-app.post('/signup', async (req, res) => {
+app.post('/signup', (req, res) => {
     let {name, email, password, username }  = req.body;
 
     let user = new User({name, email, password, username});
@@ -166,11 +176,10 @@ app.post('/signup', async (req, res) => {
 /**
  * Handles Calculating the Analytics on a custom dataset
  * @param dataset Array of MongoDB document objects
-
+ * @param limit int The limit to
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-const runAnalytics = async (dataset, method, limit = 3) => {
-
+const runAnalytics = (dataset, method, limit = 3) => {
     let analyticsMethod = {
         'per-subject-recent': () => {
             return  Analytics.perSubjectRecent(dataset, limit);
@@ -183,6 +192,9 @@ const runAnalytics = async (dataset, method, limit = 3) => {
         },
         'bayesian': () => {
             return Analytics.bayesian(dataset, limit);
+        },
+        'neural-network': () => {
+            return predict(dataset, dataset[dataset.length - 1]);
         }
     };
 
@@ -315,32 +327,12 @@ app.post('/insert', (req, res) => {
                         }));
                     });
 
-                    //Find all inserts for this user
-                    Element.find({
-                        user
-                    }, (err, docs) => {
-
-                        //Only take 10 docs
-                        docs = _.takeRight(docs, 10);
-
-                        console.log(docs);
-
-                        let data = docs.map(doc => {
-                            return {
-                                input: normalizeArray(doc.references),
-                                output: normalize(doc)
-                            }
-                        });
-
-                        const mind = new Mind().learn(data);
-
-                        console.log(mind.predict(normalize(records[0])));
-                    });
-
                     //Insert Bulk operation
                     Element.collection.insert(records, (err, data) => {
                         if(err) res.json({success: false, err});
                         console.log(chalk.green(`\u2713 Element data saved!`));
+                        console.log(chalk.green(`\u2713 Running Neural Network`));
+
                         res.json({success: true});
                     });
                 }
@@ -354,6 +346,36 @@ app.post('/insert', (req, res) => {
         });
     }
 });
+
+
+/**
+ * Run the Feed Forward Neural network
+ * @param train Array set of data to train on
+ * @param test Object a single document to base the prediction off of. This is the test data NOT the training data.
+ * @param filter boolean True if the result should be filtered for only positive values. Defaults to true.
+ */
+const predict = (train, test, filter = true) => {
+        //Only take 10 docs
+        train = _.takeRight(train, 10);
+
+        let res = train.map(doc => {
+            return {
+                input: normalizeArray(doc.references),
+                output: normalize(doc)
+            }
+        });
+
+        const mind = new Mind().learn(res);
+
+        //Normalize the test data
+        test = normalize(test);
+        let result = denormalize(mind.predict(test));
+        if(filter) {
+            return result.filter(o => o.confidence > 0).sort((a, b) => b.confidence - a.confidence);
+        }
+
+        return result.sort((a, b) => b.confidence - a.confidence);
+};
 
 
 /**
@@ -373,6 +395,25 @@ const normalize = (obj) => {
     }
 
     return map;
+};
+
+/**
+ * De-normalizes a prediction back into human readable values
+ * @param prediction Array of predicted values
+ */
+const denormalize = (prediction) => {
+    let keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+
+    if(prediction.length !== keys.length) {
+        return null;
+    }
+
+    return keys.map((value, key) => {
+         return {
+             name: value,
+             confidence: prediction[key]
+         }
+    });
 };
 
 /**
@@ -558,7 +599,7 @@ function onError(error) {
  */
 function onListening() {
     let addr = server.address();
-    console.log(chalk.green('\u2713 Running version (1.0.1)'));
+    console.log(chalk.green(`\u2713 Running version (${VERSION})`));
     console.log(chalk.blue('-------------------------------------------'));
     console.log(chalk.blue(`| Analytics Server Listening on Port ${addr.port} |`));
     console.log(chalk.blue('-------------------------------------------'));

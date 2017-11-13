@@ -120,6 +120,7 @@ var _ = __webpack_require__(2);
 var Analytics = __webpack_require__(17);
 
 var app = express();
+var VERSION = "1.0.2";
 
 //Models
 var Form = __webpack_require__(19);
@@ -182,173 +183,135 @@ app.options("/*", function (req, res, next) {
 });
 
 /**
+ * Gets the currently Running Version
+ */
+app.get('/version', function (req, res) {
+    res.json({ version: VERSION });
+});
+
+/**
  * Handles registering a new Namespace (for a new form)
  * or Running Analytics on an existing namespace
  */
-app.post('/form/register', function () {
-    var _ref = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee(req, res) {
-        var namespace, elements, method, limit;
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee$(_context) {
-            while (1) {
-                switch (_context.prev = _context.next) {
-                    case 0:
-                        //Get the namespace & Required variables i.e. ApplicationName.formName
-                        namespace = req.body.namespace;
-                        elements = req.body.elements;
-                        method = req.body.method;
-                        limit = void 0;
+app.post('/form/register', function (req, res) {
+    //Get the namespace & Required variables i.e. ApplicationName.formName
+    var namespace = req.body.namespace;
+    var elements = req.body.elements;
+    var method = req.body.method;
+    var limit = void 0;
 
+    if (req.body.hasOwnProperty('limit')) {
+        limit = req.body.limit;
+    }
 
-                        if (req.body.hasOwnProperty('limit')) {
-                            limit = req.body.limit;
+    Form.find({ namespace: namespace }, function (err, record) {
+        //There was no namespace this is a new form
+        if (record.length <= 0) {
+            //Create a new namespace
+            new Form({ namespace: namespace, elements: elements }).save(function (err, record) {
+                console.log(chalk.green('\u2713 Successfully created new Namespace: ' + namespace));
+
+                res.json({
+                    success: true,
+                    namespace: namespace
+                });
+            });
+        } else {
+
+            //Find the different element & Join them into the Form Namespace
+            record[0].set({ elements: _.union(elements.filter(function (e) {
+                    return !record[0].elements.includes(e);
+                }), record[0].elements) });
+            record[0].save();
+
+            console.log(chalk.green('\u2713 Namespace: ' + namespace + ' has been located running analytics...'));
+
+            var promises = [];
+            var responseData = [];
+
+            elements.forEach(function (element) {
+                console.log(chalk.green('\u2713 Found Data for Element Namespace: ' + element));
+                //Find each element given its parent namespace
+                var p = Element.find({ namespace: namespace + '.' + element }).exec().then(function (val) {
+                    //Acts as a switch statement to effectively compute based on the specified method
+                    var analyticsMethod = {
+                        'per-subject-recent': function perSubjectRecent() {
+                            return Analytics.perSubjectRecent(val, limit);
+                        },
+                        'per-subject-frequency': function perSubjectFrequency() {
+                            return Analytics.perSubjectFrequency(val, limit);
+                        },
+                        'decision-tree': function decisionTree() {
+                            return Analytics.decisionTree(val, limit);
+                        },
+                        'bayesian': function bayesian() {
+                            return Analytics.bayesian(val, limit);
+                        },
+                        'neural-network': function neuralNetwork() {
+                            return predict(elements, element);
                         }
-
-                        Form.find({ namespace: namespace }, function (err, record) {
-                            //There was no namespace this is a new form
-                            if (record.length <= 0) {
-                                //Create a new namespace
-                                new Form({ namespace: namespace, elements: elements }).save(function (err, record) {
-                                    console.log(chalk.green('\u2713 Successfully created new Namespace: ' + namespace));
-
-                                    res.json({
-                                        success: true,
-                                        namespace: namespace
-                                    });
-                                });
-                            } else {
-
-                                //Find the different element & Join them into the Form Namespace
-                                record[0].set({ elements: _.union(elements.filter(function (e) {
-                                        return !record[0].elements.includes(e);
-                                    }), record[0].elements) });
-                                record[0].save();
-
-                                console.log(chalk.green('\u2713 Namespace: ' + namespace + ' has been located running analytics...'));
-
-                                var promises = [];
-                                var responseData = [];
-
-                                elements.forEach(function (element) {
-                                    console.log(chalk.green('\u2713 Found Data for Element Namespace: ' + element));
-                                    //Find each element given its parent namespace
-                                    var p = Element.find({ namespace: namespace + '.' + element }).exec().then(function (val) {
-                                        //Acts as a switch statement to effectively compute based on the specified method
-                                        var analyticsMethod = {
-                                            'per-subject-recent': function perSubjectRecent() {
-                                                return Analytics.perSubjectRecent(val, limit);
-                                            },
-                                            'per-subject-frequency': function perSubjectFrequency() {
-                                                return Analytics.perSubjectFrequency(val, limit);
-                                            },
-                                            'decision-tree': function decisionTree() {
-                                                return Analytics.decisionTree(val, limit);
-                                            },
-                                            'bayesian': function bayesian() {
-                                                return Analytics.bayesian(val, limit);
-                                            }
-                                        };
-                                        //Push the results of the analytics to an empty array
-                                        responseData.push(analyticsMethod[method]());
-                                    });
-                                    promises.push(p);
-                                });
-                                Promise.all(promises).then(function () {
-                                    res.json(responseData);
-                                }).catch(function (err) {
-                                    console.error(err);
-                                });
-                            }
-                        });
-
-                    case 6:
-                    case 'end':
-                        return _context.stop();
-                }
-            }
-        }, _callee, _this);
-    }));
-
-    return function (_x, _x2) {
-        return _ref.apply(this, arguments);
-    };
-}());
+                    };
+                    //Push the results of the analytics to an empty array
+                    responseData.push(analyticsMethod[method]());
+                });
+                promises.push(p);
+            });
+            Promise.all(promises).then(function () {
+                res.json(responseData);
+            }).catch(function (err) {
+                console.error(err);
+            });
+        }
+    });
+});
 
 /**
  * Handles a basic user signup
  */
-app.post('/signup', function () {
-    var _ref2 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee2(req, res) {
-        var _req$body, name, email, password, username, user;
+app.post('/signup', function (req, res) {
+    var _req$body = req.body,
+        name = _req$body.name,
+        email = _req$body.email,
+        password = _req$body.password,
+        username = _req$body.username;
 
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee2$(_context2) {
-            while (1) {
-                switch (_context2.prev = _context2.next) {
-                    case 0:
-                        _req$body = req.body, name = _req$body.name, email = _req$body.email, password = _req$body.password, username = _req$body.username;
-                        user = new User({ name: name, email: email, password: password, username: username });
 
-                        user.save();
+    var user = new User({ name: name, email: email, password: password, username: username });
+    user.save();
 
-                        res.json({ success: true, user: user });
-
-                    case 4:
-                    case 'end':
-                        return _context2.stop();
-                }
-            }
-        }, _callee2, _this);
-    }));
-
-    return function (_x3, _x4) {
-        return _ref2.apply(this, arguments);
-    };
-}());
+    res.json({ success: true, user: user });
+});
 
 /**
  * Handles Calculating the Analytics on a custom dataset
  * @param dataset Array of MongoDB document objects
-
+ * @param limit int The limit to
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-var runAnalytics = function () {
-    var _ref3 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee3(dataset, method) {
-        var limit = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 3;
-        var analyticsMethod;
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee3$(_context3) {
-            while (1) {
-                switch (_context3.prev = _context3.next) {
-                    case 0:
-                        analyticsMethod = {
-                            'per-subject-recent': function perSubjectRecent() {
-                                return Analytics.perSubjectRecent(dataset, limit);
-                            },
-                            'per-subject-frequency': function perSubjectFrequency() {
-                                return Analytics.perSubjectFrequency(dataset, limit);
-                            },
-                            'decision-tree': function decisionTree() {
-                                return Analytics.decisionTree(dataset, limit);
-                            },
-                            'bayesian': function bayesian() {
-                                return Analytics.bayesian(dataset, limit);
-                            }
-                        };
+var runAnalytics = function runAnalytics(dataset, method) {
+    var limit = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 3;
 
-                        //Push the results of the analytics to an empty array
-
-                        return _context3.abrupt('return', analyticsMethod[method]());
-
-                    case 2:
-                    case 'end':
-                        return _context3.stop();
-                }
-            }
-        }, _callee3, _this);
-    }));
-
-    return function runAnalytics(_x6, _x7) {
-        return _ref3.apply(this, arguments);
+    var analyticsMethod = {
+        'per-subject-recent': function perSubjectRecent() {
+            return Analytics.perSubjectRecent(dataset, limit);
+        },
+        'per-subject-frequency': function perSubjectFrequency() {
+            return Analytics.perSubjectFrequency(dataset, limit);
+        },
+        'decision-tree': function decisionTree() {
+            return Analytics.decisionTree(dataset, limit);
+        },
+        'bayesian': function bayesian() {
+            return Analytics.bayesian(dataset, limit);
+        },
+        'neural-network': function neuralNetwork() {
+            return predict(dataset, dataset[dataset.length - 1]);
+        }
     };
-}();
+
+    //Push the results of the analytics to an empty array
+    return analyticsMethod[method]();
+};
 
 /**
  * Sorts JSON by specified object property
@@ -377,11 +340,11 @@ var sortResults = function sortResults(data, prop, asc) {
  * 3.) return an array with X amount of nested arrays representing the analysis for each unique namespace
  */
 app.post('/analytics', function () {
-    var _ref4 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee4(req, res) {
+    var _ref = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee(req, res) {
         var data, method, limit, namespaces, analysis, sortedData, i;
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee4$(_context4) {
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee$(_context) {
             while (1) {
-                switch (_context4.prev = _context4.next) {
+                switch (_context.prev = _context.next) {
                     case 0:
                         data = req.body.data;
                         method = req.body.method;
@@ -427,14 +390,14 @@ app.post('/analytics', function () {
 
                     case 10:
                     case 'end':
-                        return _context4.stop();
+                        return _context.stop();
                 }
             }
-        }, _callee4, _this);
+        }, _callee, _this);
     }));
 
-    return function (_x8, _x9) {
-        return _ref4.apply(this, arguments);
+    return function (_x2, _x3) {
+        return _ref.apply(this, arguments);
     };
 }());
 
@@ -501,32 +464,12 @@ app.post('/insert', function (req, res) {
                         }));
                     });
 
-                    //Find all inserts for this user
-                    Element.find({
-                        user: user
-                    }, function (err, docs) {
-
-                        //Only take 10 docs
-                        docs = _.takeRight(docs, 10);
-
-                        console.log(docs);
-
-                        var data = docs.map(function (doc) {
-                            return {
-                                input: normalizeArray(doc.references),
-                                output: normalize(doc)
-                            };
-                        });
-
-                        var mind = new Mind().learn(data);
-
-                        console.log(mind.predict(normalize(records[0])));
-                    });
-
                     //Insert Bulk operation
                     Element.collection.insert(records, function (err, data) {
                         if (err) res.json({ success: false, err: err });
                         console.log(chalk.green('\u2713 Element data saved!'));
+                        console.log(chalk.green('\u2713 Running Neural Network'));
+
                         res.json({ success: true });
                     });
                 }
@@ -540,6 +483,43 @@ app.post('/insert', function (req, res) {
         });
     }
 });
+
+/**
+ * Run the Feed Forward Neural network
+ * @param train Array set of data to train on
+ * @param test Object a single document to base the prediction off of. This is the test data NOT the training data.
+ * @param filter boolean True if the result should be filtered for only positive values. Defaults to true.
+ */
+var predict = function predict(train, test) {
+    var filter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
+
+    //Only take 10 docs
+    train = _.takeRight(train, 10);
+
+    var res = train.map(function (doc) {
+        return {
+            input: normalizeArray(doc.references),
+            output: normalize(doc)
+        };
+    });
+
+    var mind = new Mind().learn(res);
+
+    //Normalize the test data
+    test = normalize(test);
+    var result = denormalize(mind.predict(test));
+    if (filter) {
+        return result.filter(function (o) {
+            return o.confidence > 0;
+        }).sort(function (a, b) {
+            return b.confidence - a.confidence;
+        });
+    }
+
+    return result.sort(function (a, b) {
+        return b.confidence - a.confidence;
+    });
+};
 
 /**
  * Normalizes an output that is not an Array but a single value
@@ -560,6 +540,25 @@ var normalize = function normalize(obj) {
     }
 
     return map;
+};
+
+/**
+ * De-normalizes a prediction back into human readable values
+ * @param prediction Array of predicted values
+ */
+var denormalize = function denormalize(prediction) {
+    var keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+
+    if (prediction.length !== keys.length) {
+        return null;
+    }
+
+    return keys.map(function (value, key) {
+        return {
+            name: value,
+            confidence: prediction[key]
+        };
+    });
 };
 
 /**
@@ -607,11 +606,11 @@ app.get('/all', function (req, res) {
 });
 
 app.post('/query', function () {
-    var _ref5 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee5(req, res) {
+    var _ref2 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee2(req, res) {
         var hasTable, hasAnd, hasOr, hasWhere, hasUser, hasLike, hasLimit, hasTables, query;
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee5$(_context5) {
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee2$(_context2) {
             while (1) {
-                switch (_context5.prev = _context5.next) {
+                switch (_context2.prev = _context2.next) {
                     case 0:
                         try {
                             hasTable = req.body.hasOwnProperty('table');
@@ -675,35 +674,35 @@ app.post('/query', function () {
 
                     case 13:
                     case 'end':
-                        return _context5.stop();
+                        return _context2.stop();
                 }
             }
-        }, _callee5, _this);
+        }, _callee2, _this);
     }));
 
-    return function (_x10, _x11) {
-        return _ref5.apply(this, arguments);
+    return function (_x5, _x6) {
+        return _ref2.apply(this, arguments);
     };
 }());
 
 app.get('*', function () {
-    var _ref6 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee6(req, res) {
-        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee6$(_context6) {
+    var _ref3 = _asyncToGenerator( /*#__PURE__*/__WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.mark(function _callee3(req, res) {
+        return __WEBPACK_IMPORTED_MODULE_0__Users_g6vc_WebstormProjects_form_analytics_github_node_modules_babel_runtime_regenerator___default.a.wrap(function _callee3$(_context3) {
             while (1) {
-                switch (_context6.prev = _context6.next) {
+                switch (_context3.prev = _context3.next) {
                     case 0:
                         res.json({ success: true, msg: 'The server is active and running!' });
 
                     case 1:
                     case 'end':
-                        return _context6.stop();
+                        return _context3.stop();
                 }
             }
-        }, _callee6, _this);
+        }, _callee3, _this);
     }));
 
-    return function (_x12, _x13) {
-        return _ref6.apply(this, arguments);
+    return function (_x7, _x8) {
+        return _ref3.apply(this, arguments);
     };
 }());
 
@@ -774,7 +773,7 @@ function onError(error) {
  */
 function onListening() {
     var addr = server.address();
-    console.log(chalk.green('\u2713 Running version (1.0.1)'));
+    console.log(chalk.green('\u2713 Running version (' + VERSION + ')'));
     console.log(chalk.blue('-------------------------------------------'));
     console.log(chalk.blue('| Analytics Server Listening on Port ' + addr.port + ' |'));
     console.log(chalk.blue('-------------------------------------------'));
