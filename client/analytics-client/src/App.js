@@ -38,7 +38,7 @@ class App extends Component {
      * When the component Mounts this function is called
      */
     componentDidMount = () => {
-         //AnalyticsWidget.setHost('http://34.237.224.226:3010');
+         AnalyticsWidget.setHost('http://34.237.224.226:3010');
 
         //Get the Analytics for desired forms when component Mounts
         AnalyticsWidget.registerPickPredictor({

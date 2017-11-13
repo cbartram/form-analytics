@@ -95,7 +95,7 @@ Upon the first form registration if the operation is successful the server will 
 ```json
 {
     "success": true,
-    data: []
+    "data": []
 }
 ```
 **Data will be an empty array** because you have not inserted any data into this namespace and so we cannot suggest relevant
@@ -178,9 +178,12 @@ We can add `and`, `like`, `where`, `limit` and `or` clauses as well to further c
 Lets run through another example:
 
 ```javascript
-AnalyticsWidget.query().database("Pizza.createForm").table("Veggies").like("Pepp").limit(10).exec(data => {
-    console.log(data);
-});
+AnalyticsWidget.query()
+    .database("Pizza.createForm")
+    .table("Veggies")
+    .like("Pepp")
+    .limit(10)
+    .exec(data => console.log(data));
 ```
 
 This query finds all documents in the Veggies namespace where the value includes the text "Pepp" (peppers would be returned in this instance)
@@ -193,14 +196,20 @@ the API takes care of the rest!
 How about running analytics on a custom data set? No problem!
 
 ```javascript
-AnalyticsWidget.query().database("Pizza.createForm").table("Meats").where("Turkey").and("Tomato").onlyUser("al9qI12W9").exec(data => {
-    //We can pass our data right into the analytics function!!
-    AnalyticsWidget.analyze({
-        data,
-        method: 'per-subject-frequency'
-    }, result => {
-        //result holds the most frequently added toppings given a unique data set!
-    });
+AnalyticsWidget.query()
+    .database("Pizza.createForm")
+    .table("Meats")
+    .where("Turkey")
+    .and("Tomato")
+    .onlyUser("al9qI12W9")
+    .exec(data => {
+        //We can pass our data right into the analytics function!!
+        AnalyticsWidget.analyze({
+            data,
+            method: 'per-subject-frequency'
+        }, result => {
+            //result holds the most frequently added toppings given a unique data set!
+        });
 })
 ```
 
@@ -239,26 +248,30 @@ by default take the last item in the array of custom data as the test data. Lets
 
 ```javascript
 //First We start by making a Query
-AnalyticsAPI.query().database("Pizza.createForm").table("Meats").onlyUser("A9hB6Lfqk").exec((err, res) => {
+AnalyticsAPI.query()
+    .database("Pizza.createForm")
+    .table("Meats")
+    .onlyUser("A9hB6Lfqk")
+    .exec((err, res) => {
 
-    //Now lets analyze our results with the neural network!
-    let config = {
-        data: res, //Notice how we feed our custom data set directly into the configuration
-        method: 'neural-network' //We must specify neural network as our method of choice
-    };
+        //Now lets analyze our results with the neural network!
+        let config = {
+            data: res, //Notice how we feed our custom data set directly into the configuration
+            method: 'neural-network' //We must specify neural network as our method of choice
+        };
 
-    AnalyticsAPI.analyze(config, res => {
-            //We did it! Heres our result from the neural network!
-            console.log(res);
-    });
+        AnalyticsAPI.analyze(config, res => {
+                //We did it! Heres our result from the neural network!
+                console.log(res);
+        });
 
 });
 ```
 So what exactly does the neural network's response look like? Simple! Its an array of objects with 2 properties
 ```json
 {
-"name": "Beef"
-"confidence": .98961748361
+    "name": "Beef"
+    "confidence": ".98961748361"
 }
 ```
 This can be interpreted as follows: "We are 98% sure that the person who ordered this pizza would like to select Beef as a topping."
@@ -301,7 +314,7 @@ Whenever the `registerPickPredictor()` method is called each element in the arra
 would query all the documents with the namespaces Pizza.toppingForm.Meats, Pizza.toppingForm.Veggies, and Pizza.toppingForm.Cheese and would
 then run them against the per-subject-frequency classifier and return something like this
 
-```json
+```
 {
   "Ham",
   "Tomatoes",
@@ -382,7 +395,7 @@ to be included in analytics for a separate user.
 	"query": {
 		"like": ["Fre"],
 		"and": ["George Harrington"],
-		"user": "59f9cbac106d3e7fe33cd33f" //Users unique ID
+		"user": "59f9cbac106d3e7fe33cd33f"
 	}
 }
 ```
@@ -394,7 +407,12 @@ As you can see the Query API is quite powerful as it can services a variety of n
 You can also run the Query API through the client side library using expressive chained methods to filter the data!
 
 ```javascript
-let data = new AnalyticsWidget().query("Pizza.createForm").table("Meat").where("Turkey").and("Tomato").exec((data) => {
+let data = new AnalyticsWidget()
+    .query("Pizza.createForm")
+    .table("Meat")
+    .where("Turkey")
+    .and("Tomato")
+    .exec((data) => {
 //JSON documents matching the search criteria is available as 'data'!
 })
 ```
