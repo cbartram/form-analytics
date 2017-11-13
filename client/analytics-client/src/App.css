@@ -23,6 +23,16 @@
 }
 
 @keyframes App-logo-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+code { white-space: pre;  }
+
+.code-wrapper {
+  background-color:#f9f2f4;
+  word-wrap: break-word;
 }

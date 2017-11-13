@@ -9,10 +9,12 @@ const bluebird = require('bluebird');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const chalk = require('chalk');
+const Mind = require('node-mind');
 const _ = require('lodash');
 const Analytics = require('./utils/AnalyticsWidget.js');
 
 const app = express();
+const VERSION = "1.0.2";
 
 //Models
 const Form = require('../models/Form');
@@ -21,6 +23,7 @@ const User = require('../models/User');
 
 bluebird.promisifyAll(mongoose);
 mongoose.Promise = global.Promise;
+
 
 //Connect to Database
 mongoose.connect('mongodb://mongoAdmin:Innov8@34.226.210.46:27017/admin', {
@@ -76,12 +79,18 @@ app.options("/*", function(req, res, next){
     res.send(200);
 });
 
+/**
+ * Gets the currently Running Version
+ */
+app.get('/version', (req, res) => {
+    res.json({version: VERSION});
+});
 
 /**
  * Handles registering a new Namespace (for a new form)
  * or Running Analytics on an existing namespace
  */
-app.post('/form/register', async (req, res) => {
+app.post('/form/register',  (req, res) => {
     //Get the namespace & Required variables i.e. ApplicationName.formName
     const namespace = req.body.namespace;
     const elements = req.body.elements;
@@ -133,6 +142,9 @@ app.post('/form/register', async (req, res) => {
                         },
                         'bayesian': () => {
                             return Analytics.bayesian(val, limit);
+                        },
+                        'neural-network': () => {
+                            return predict(elements, element);
                         }
                     };
                     //Push the results of the analytics to an empty array
@@ -152,7 +164,7 @@ app.post('/form/register', async (req, res) => {
 /**
  * Handles a basic user signup
  */
-app.post('/signup', async (req, res) => {
+app.post('/signup', (req, res) => {
     let {name, email, password, username }  = req.body;
 
     let user = new User({name, email, password, username});
@@ -164,11 +176,10 @@ app.post('/signup', async (req, res) => {
 /**
  * Handles Calculating the Analytics on a custom dataset
  * @param dataset Array of MongoDB document objects
-
+ * @param limit int The limit to
  * @param method String Method of analytics to run i.e. "per-subject-frequency
  */
-const runAnalytics = async (dataset, method, limit = 3) => {
-
+const runAnalytics = (dataset, method, limit = 3) => {
     let analyticsMethod = {
         'per-subject-recent': () => {
             return  Analytics.perSubjectRecent(dataset, limit);
@@ -181,6 +192,9 @@ const runAnalytics = async (dataset, method, limit = 3) => {
         },
         'bayesian': () => {
             return Analytics.bayesian(dataset, limit);
+        },
+        'neural-network': () => {
+            return predict(dataset, dataset[dataset.length - 1]);
         }
     };
 
@@ -223,13 +237,6 @@ app.post('/analytics', async (req, res) => {
         limit = req.body.limit;
     }
 
-
-    data.forEach(d => {
-       if(d.namespace === 'Pizza.createForm.Veggies') {
-           console.log(d);
-       }
-    });
-
     let namespaces = []; //Array holding all unique namespace
     let analysis = []; //Array holding analysis for each unique namespace
 
@@ -260,15 +267,13 @@ app.post('/analytics', async (req, res) => {
     }).catch((err) => {
         console.error(err);
     });
-
 });
-
 
 /**
  * Handles Inserting data into Mongo but does not run analytics
  * this is how the classifier is updated when the Submit button is pressed
  */
-app.post('/insert', async  (req, res) => {
+app.post('/insert', (req, res) => {
     const formNamespace = req.body.namespace; //Pizza.createForm
     const elementNamespaces = req.body.elements; //[Meat, Veggies, CrustStyle]
     const elementValues = req.body.values; //[Pepperoni, Tomatoes, Thin]
@@ -326,6 +331,8 @@ app.post('/insert', async  (req, res) => {
                     Element.collection.insert(records, (err, data) => {
                         if(err) res.json({success: false, err});
                         console.log(chalk.green(`\u2713 Element data saved!`));
+                        console.log(chalk.green(`\u2713 Running Neural Network`));
+
                         res.json({success: true});
                     });
                 }
@@ -339,6 +346,101 @@ app.post('/insert', async  (req, res) => {
         });
     }
 });
+
+
+/**
+ * Run the Feed Forward Neural network
+ * @param train Array set of data to train on
+ * @param test Object a single document to base the prediction off of. This is the test data NOT the training data.
+ * @param filter boolean True if the result should be filtered for only positive values. Defaults to true.
+ */
+const predict = (train, test, filter = true) => {
+        //Only take 10 docs
+        train = _.takeRight(train, 10);
+
+        let res = train.map(doc => {
+            return {
+                input: normalizeArray(doc.references),
+                output: normalize(doc)
+            }
+        });
+
+        const mind = new Mind().learn(res);
+
+        //Normalize the test data
+        test = normalize(test);
+        let result = denormalize(mind.predict(test));
+        if(filter) {
+            return result.filter(o => o.confidence > 0).sort((a, b) => b.confidence - a.confidence);
+        }
+
+        return result.sort((a, b) => b.confidence - a.confidence);
+};
+
+
+/**
+ * Normalizes an output that is not an Array but a single value
+ * @param obj Element document from MongoDB
+ * @returns {[number,number,number,number,number,number,number,number,number,number,number,number,number,number]}
+ */
+const normalize = (obj) => {
+    let keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+    let map = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]; //Represents beef => 0, Ham => 0 Anchovies => 1 Bacon => 1
+
+    let index = _.findIndex(keys, o => o === obj.value);
+
+    if(index !== null && index !== -1) {
+        //This is also going to be the same index in the map array which needs to be updated to be 1
+        map[index] = 1;
+    }
+
+    return map;
+};
+
+/**
+ * De-normalizes a prediction back into human readable values
+ * @param prediction Array of predicted values
+ */
+const denormalize = (prediction) => {
+    let keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+
+    if(prediction.length !== keys.length) {
+        return null;
+    }
+
+    return keys.map((value, key) => {
+         return {
+             name: value,
+             confidence: prediction[key]
+         }
+    });
+};
+
+/**
+ * Normalizes a set of Form References into a binary classification
+ * to be trained into a neural network
+ * @param references
+ * @returns {*}
+ */
+const normalizeArray = (references) => {
+    let keys = ['Beef', 'Ham', 'Anchovies', 'Turkey', 'Bacon', 'Corn', 'Peppers', 'Onions', 'Tomato', 'Basil', 'Thin', 'Thick', 'Cheese', 'Pie'];
+    let map = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]; //Represents beef => 0, Ham => 0 Anchovies => 1 Bacon => 1
+
+    references.map(reference => {
+        //Find the index in the keys array where the value of the key is equal to the value of the reference
+       let index = _.findIndex(keys, o => {
+            return o === reference.value;
+        });
+
+       if(index !== null && index !== -1) {
+           //This is also going to be the same index in the map array which needs to be updated to be 1
+           map[index] = 1;
+       }
+    });
+
+    return map;
+};
+
 
 /**
  * Deletes all records in a Collection
@@ -368,6 +470,7 @@ app.post('/query', async (req, res) => {
         var hasUser = req.body.query.hasOwnProperty('user');
         var hasLike = req.body.query.hasOwnProperty('like');
         var hasLimit = req.body.query.hasOwnProperty('limit');
+        var hasTables = req.body.hasOwnProperty('tables');
     } catch (err) {
         //They are missing some properties of the query
         console.log('\u2715 Part of the Query is Undefined');
@@ -388,26 +491,15 @@ app.post('/query', async (req, res) => {
         })
     }
 
+    if(hasTable && hasTables) {
+        res.json({
+            error: true,
+            msg: 'At this time you must either have a "table" clause or a "tables" clause but not both'
+        })
+    }
+
     //Build up the query from an empty object
     let query = {};
-
-    if(typeof req.body.table === 'object') {
-        req.body.table.forEach(t => {
-            query.namespace = `${req.body.namespace}.${req.body.t}`;
-            hasWhere ? query.value = req.body.query.where : null;
-            hasAnd ? query['references.value'] = {$all: req.body.query.and} : null;
-            hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
-            hasUser ? query.user = req.body.query.user : null;
-            hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
-        });
-
-        hasLimit ?
-            await Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
-            Element.find(query, (err, docs) => {
-                res.json(docs);
-            });
-
-    }
 
     //Match Req body to query values
     !hasTable ? query.namespace = {
@@ -419,13 +511,17 @@ app.post('/query', async (req, res) => {
     hasOr ? query['references.value'] = {$in: req.body.query.or} : null;
     hasUser ? query.user = req.body.query.user : null;
     hasLike ? query.value = {$regex: '.*' + req.body.query.like + '.*', $options: 'i'} : null;
-
+    if(hasTables) {
+        query.namespace = Analytics.toFullNamespace(req.body.namespace, req.body.tables);
+    }
     hasLimit ?
-        Element.find(query).sort({'value': -1}).limit(req.body.query.limit).exec((err, docs) => res.json(docs)) :
         Element.find(query, (err, docs) => {
+            docs = _.take(docs, req.body.limit);
             res.json(docs);
+        }) :
+        Element.find(query, (err, docs) => {
+           res.json(docs);
         });
-
 });
 
 app.get('*', async (req, res) => {
@@ -503,6 +599,7 @@ function onError(error) {
  */
 function onListening() {
     let addr = server.address();
+    console.log(chalk.green(`\u2713 Running version (${VERSION})`));
     console.log(chalk.blue('-------------------------------------------'));
     console.log(chalk.blue(`| Analytics Server Listening on Port ${addr.port} |`));
     console.log(chalk.blue('-------------------------------------------'));

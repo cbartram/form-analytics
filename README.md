@@ -9,6 +9,7 @@ Form Analytics supports the following analytical models:
 - per-subject-freqency
 - bayesian
 - decision-tree
+- **New** neural-network
 
 ## Getting Started
 
@@ -44,6 +45,9 @@ start the program: npm start
 ```
 
 After the server is running it will be active on your network at http://localhost:3010 You can verify this by following the URL and you should see a Static HTML page notifying you that the server successfully processed your request!
+
+This package also comes pre-installed with a demonstration client showing the functionality of the product to run the client navigate in your terminal to the `/client/analytics-client` directory then run the command `npm start` the client will automatically
+connect to a setup MongoDB instance in AWS with pre-populated data to run the analytics on. Any additional data which is created will also be stored in AWS.
 
 ## Usage & Examples
 
@@ -215,7 +219,54 @@ Check out our API endpoints below!
 | `/all`           	| `GET`            	| None                                                                                                                        	|
 | `/query`         	| `POST`           	| ```{"namespace": "Pizza.createForm","table": "Meat","query": {"where": ["Turkey"],"and": ["Tomato", "Thin"]}}```      	|
 | `/analytics`         	| `POST`           	| ```{"data": [ //Array of your data ], "method": 'per-subject-frequency'}```      	|
+| `/version`         	| `GET`           	| None     	|
 
+
+
+## Analytics Methods
+
+This module supports a variety of different analytical methods including `per-subject-frequency`, `per-subject-recent`, and even a `neural-network`!
+
+The per-subject-frequency method is great for finding the most frequently occurring values in a set of objects. For example if you want to figure out what the most
+frequently ordered meat topping then per-subject frequency would be the way to go!
+
+Per-subject-recent finds the most recently inserted items and as such **can** include duplicates in the list. This would be an excellent choice
+if you would like the answer the question "what did the last five people choose to put on their pizza?"
+
+The `neural-network` is the latest addition to the Analytics Module and uses a feed forward neural network to make accurate predictions about the
+most likely topping someone will choose next. The neural network will train its data on the custom data set that is returned from your query and will
+by default take the last item in the array of custom data as the test data. Lets run through a full example!
+
+```javascript
+//First We start by making a Query
+AnalyticsAPI.query().database("Pizza.createForm").table("Meats").onlyUser("A9hB6Lfqk").exec((err, res) => {
+
+    //Now lets analyze our results with the neural network!
+    let config = {
+        data: res, //Notice how we feed our custom data set directly into the configuration
+        method: 'neural-network' //We must specify neural network as our method of choice
+    };
+
+    AnalyticsAPI.analyze(config, res => {
+            //We did it! Heres our result from the neural network!
+            console.log(res);
+    });
+
+});
+```
+So what exactly does the neural network's response look like? Simple! Its an array of objects with 2 properties
+```json
+{
+"name": "Beef"
+"confidence": .98961748361
+}
+```
+This can be interpreted as follows: "We are 98% sure that the person who ordered this pizza would like to select Beef as a topping."
+And just like that you have an array of predictions made by a Feed forward neural network to give to your customers!
+
+For now we cannot further configure the neural network to take a specific piece of test data (such as when new data is submitted predictions are updated)
+however that update is coming in the future! In the meantime feel free to continue to pass more configuration options to the `per-subject-frequency` and `per-subject-recent`
+methods and check out the configuration section below!
 
 ## Configuration
 
